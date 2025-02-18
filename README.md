@@ -15,26 +15,25 @@ This project is in typescript, which is pretty similar to javascript. If you are
 When you push to the main branch, it will automaically deploy to the Vercel project an will be displayed publicly on https://www.pnwmap.app/
 
 # Features to add
-
-* Main Features:
-General Map of the campus
-Would include interactive buildings that you can “click”/”tap” into to see locations within the building
-Routing
-Campus Weather (Hammond)
-Navbar if adding different pages
-Possibly an event tab? MyPNWLIfe something called an “ICS” feed, calendar feed
-https://mypnwlife.pnw.edu/ical/pnw/ical_pnw.ics
-Current location, denoted by a pin on the map
-Pins
-Different colors for different uses, ie. maybe red pin is where you are and a blue pin is a pin placed by the user
-* Database & its potential uses:
-Think i'm just going to use MySQL
-host on either AWS RDS, or figure out how Vercel databases work
-User login?
-Pins, markers on the map, could be save to a user account
-Class schedule, shows where they are on the map
-Show quickest route from location
-Could store building information in the database, rooms, floors, etc.
+## Main Features:
+* General Map of the campus
+* Would include interactive buildings that you can “click”/”tap” into to see locations within the building
+* Routing
+* Campus Weather (Hammond)
+* Navbar if adding different pages
+* Possibly an event tab? MyPNWLIfe something called an “ICS” feed, calendar feed
+*     https://mypnwlife.pnw.edu/ical/pnw/ical_pnw.ics
+* Current location, denoted by a pin on the map
+* Pins
+*     Different colors for different uses, ie. maybe red pin is where you are and a blue pin is a pin placed by the user
+## Database & its potential uses:
+* Think i'm just going to use MySQL
+* host on either AWS RDS, or figure out how Vercel databases work
+* User login?
+* Pins, markers on the map, could be save to a user account
+* Class schedule, shows where they are on the map
+*     Show quickest route from location
+* Could store building information in the database, rooms, floors, etc.
 
 
 # Test Coords for building detection: 
