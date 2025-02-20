@@ -6,13 +6,14 @@ function getLocation(callback) {
             (position) => showPosition(position, callback),
             showError,
             {
-                enableHighAccuracy: true,
+                enableHighAccuracy: true,  // Set to false to prefer IP/WiFi over GPS
                 timeout: 15000,
                 maximumAge: 17000
             }
         );
     } else {
-        alert("Geolocation is not supported by this browser.");
+        building = "Geolocation not supported";
+        if (callback) callback(building);
     }
 }
 
@@ -115,7 +116,22 @@ function showPosition(position, callback) {
 
 function showError(error) {
     console.log(error);
-    building = "Location access denied.";
+    let errorMessage;
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied by user.";
+            break;
+        case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information unavailable. Please ensure you're using HTTPS or localhost.";
+            break;
+        case error.TIMEOUT:
+            errorMessage = "Location request timed out.";
+            break;
+        default:
+            errorMessage = "An unknown error occurred.";
+    }
+    building = errorMessage;
+    console.log(errorMessage);
 }
 
 export { getLocation, building };
