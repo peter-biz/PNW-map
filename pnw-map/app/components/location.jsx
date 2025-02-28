@@ -10,6 +10,7 @@ function getLocation(callback) {
                 timeout: 15000,
                 maximumAge: 17000
             }
+            //TODO: fix location on devices with no gps
         );
     } else {
         building = "Geolocation not supported";
@@ -113,6 +114,41 @@ function showPosition(position, callback) {
         callback(building);
     }
 }
+
+export const SULBP1 = { lat: 41.584527, lng: -87.474722 }; // Top Left
+export const SULBP2 = { lat: 41.584527, lng: -87.473389 }; // Top Right
+export const SULBP3 = { lat: 41.584083, lng: -87.473306 }; // Bot Right
+export const GYTEP1 = { lat: 41.58559579963701, lng: -87.47565221109035 }; // Top Left
+export const GYTEP2 = { lat: 41.58550752684843, lng: -87.47417029072048 }; // Top Right
+export const GYTEP3 = { lat: 41.585075189061406, lng: -87.47414615084114 }; // Bot Right
+export const POTTERP1 = { lat: 41.586511340457825, lng: -87.47504375643874 }; // Top Left
+export const POTTERP2 = { lat: 41.586513346627704, lng: -87.47474066684273 }; // Top Right
+export const POTTERP3 = { lat: 41.58616728139962, lng: -87.47474334905155 }; // Bot Right
+export const POWERSP1 = { lat: 41.58648626332894, lng: -87.47561372581177 }; // Top Left
+export const POWERSP2 = { lat: 41.58648726641429, lng: -87.47516311473098 }; // Top Right
+export const POWERSP3 = { lat: 41.58604691045072, lng: -87.47516445583538 }; // Bot Right
+export const CLOP1 = { lat: 41.58719204054566, lng: -87.47575650012156 }; // Top Left
+export const CLOP2 = { lat: 41.58721109895614, lng: -87.47507119576952 }; // Top Right
+export const CLOP3 = { lat: 41.58653000805287, lng: -87.4750483969933 }; // Bot Right
+export const ANDERSONP1 = { lat: 41.58802407130252, lng: -87.47562641050784 }; // Top Left
+export const ANDERSONP2 = { lat: 41.58802106211808, lng: -87.47498670370564 }; // Top Right
+export const ANDERSONP3 = { lat: 41.5874262439056, lng: -87.47493440063377 }; // Bot Right
+export const NILSP1 = { lat: 41.58361944832225, lng: -87.47458185241473 }; // Top Left
+export const NILSP2 = { lat: 41.58361042015047, lng: -87.47343252589033 }; // Top Right
+export const NILSP3 = { lat: 41.58337819513019, lng: -87.47355926026957 }; // Bot Right
+export const PORTERP1 = { lat: 41.58540983454981, lng: -87.47351260108323 }; // Top Left
+export const PORTERP2 = { lat: 41.58540180973273, lng: -87.47274548936234 }; // Top Right
+export const PORTERP3 = { lat: 41.5850868348742, lng: -87.47274280715354 }; // Bot Right
+export const OFFICEP1 = { lat: 41.58324415257033, lng: -87.47560494597836 }; // Top Left
+export const OFFICEP2 = { lat: 41.583293306201845, lng: -87.4751798158813 }; // Top Right
+export const OFFICEP3 = { lat: 41.58267336581933, lng: -87.47517445146507 }; // Bot Right
+export const FITNESSP1 = { lat: 41.58063765045891, lng: -87.4745391853471 }; // Top Left
+export const FITNESSP2 = { lat: 41.580620596461095, lng: -87.47340863433189 }; // Top Right
+export const FITNESSP3 = { lat: 41.579953480651504, lng: -87.47348105396162 }; // Bot Right
+export const COUNSELINGP1 = { lat: 41.579594338742616, lng: -87.47526740499988 }; // Top Left
+export const COUNSELINGP2 = { lat: 41.57959132916529, lng: -87.47498174976117 }; // Top Right
+export const COUNSELINGP3 = { lat: 41.579230178868485, lng: -87.47500454853608 }; // Bot Right
+
 
 function showError(error) {
     console.log(error);
