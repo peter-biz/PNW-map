@@ -40,8 +40,8 @@ function addMarker(map, coords, popupText) {
 export default function MapComponent({ buildingPoints }) {
   useEffect(() => {
     // Define the bounds (adjust these coordinates to your desired box)
-    const southWest = L.latLng(41.579, -87.476); // Bottom left corner     TODO: fix bounds a lil, need to be adjusted on top/bot
-    const northEast = L.latLng(41.588, -87.472); // Top right corner
+    const southWest = L.latLng(41.57752532677525, -87.47749638635923); // Bottom left corner   
+    const northEast = L.latLng(41.58841412396277, -87.47080018646325); // Top right corner
     const bounds = L.latLngBounds(southWest, northEast);
 
     // Initialize the map with restrictions
