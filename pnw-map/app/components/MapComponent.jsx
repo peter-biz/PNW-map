@@ -25,7 +25,7 @@ function calculateCentroid(corners) {
   ];
 }
 
-/*
+/* TODO: need to add an interactive layer
 * Allows the user to add a marker to the map
 * @param {Object} map - The map object
 * @param {Array} coords - The coordinates of the marker
@@ -40,7 +40,7 @@ function addMarker(map, coords, popupText) {
 export default function MapComponent({ buildingPoints }) {
   useEffect(() => {
     // Define the bounds (adjust these coordinates to your desired box)
-    const southWest = L.latLng(41.579, -87.476); // Bottom left corner
+    const southWest = L.latLng(41.579, -87.476); // Bottom left corner     TODO: fix bounds a lil, need to be adjusted on top/bot
     const northEast = L.latLng(41.588, -87.472); // Top right corner
     const bounds = L.latLngBounds(southWest, northEast);
 
@@ -53,6 +53,21 @@ export default function MapComponent({ buildingPoints }) {
       maxZoom: 19,              // Maximum zoom level
       dragging: true,           // Allow dragging within bounds
       bounceAtZoomLimits: true, // Bounce back when trying to zoom beyond limits
+      doubleClickZoom: false,   // Disable double-click zoom
+    });
+
+    // Add click event handler to the map
+    map.on('dblclick', function(e) {
+      // Get clicked coordinates
+      const coords = [e.latlng.lat, e.latlng.lng];
+      
+      // You can customize this to prompt the user for text
+      const popupText = prompt('Enter description for this marker:');
+      
+      if (popupText) {
+        // Use the existing addMarker function
+        addMarker(map, coords, popupText);
+      }
     });
 
     // Add OpenStreetMap tiles
@@ -97,11 +112,11 @@ export default function MapComponent({ buildingPoints }) {
       .bindPopup("POTTER")
       .addTo(map);
 
-    // Cleanup function to prevent memory leaks
+
     return () => {
       map.remove();
     };
   }, [buildingPoints]);
 
-  return <div id="map" style={{ height: '800px', width: '100%' }}></div>;
+  return <div id="map" style={{ height: '100vh', width: '100%' }}></div>;
 }
