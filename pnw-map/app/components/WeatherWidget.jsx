@@ -48,7 +48,7 @@ const WeatherWidget = () => {
       <style jsx>{`
         .weather-widget {
           position: absolute;
-          top: 20px;
+          top: 30px;
           right: 20px;
           background-color: rgba(255, 255, 255, 0.9);
           padding: 12px;
