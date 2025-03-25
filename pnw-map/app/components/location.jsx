@@ -1,33 +1,52 @@
-var building = "Searching";
+let building = "Searching";
 
 function getLocation(callback) {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => showPosition(position, callback),
-            showError,
-            {
-                enableHighAccuracy: true,  // Set to false to prefer IP/WiFi over GPS
-                timeout: 15000,
-                maximumAge: 17000
-            }
-            //TODO: fix location on devices with no gps
-        );
-    } else {
-        building = "Geolocation not supported";
-        if (callback) callback(building);
+    // Check if we're on HTTPS or localhost
+    if (!window.location.protocol.includes('https') && 
+        !window.location.hostname.includes('localhost')) {
+        const error = "Geolocation requires HTTPS or localhost for security reasons.";
+        console.error(error);
+        if (callback) callback(error);
+        return;
     }
+
+    if (!navigator.geolocation) {
+        const error = "Geolocation is not supported by this browser.";
+        console.error(error);
+        if (callback) callback(error);
+        return;
+    }
+
+    const options = {
+        enableHighAccuracy: false, // Set to false to prefer WiFi/IP over GPS
+        timeout: 5000,            // Reduced timeout to 5 seconds
+        maximumAge: 0             // Don't use cached position
+    };
+
+    // Try to get position
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const { latitude, longitude, accuracy } = position.coords;
+            console.log(`Location obtained - Lat: ${latitude}, Lng: ${longitude}, Accuracy: ${accuracy}m`);
+            
+            // Only update building if accuracy is reasonable
+            if (accuracy <= 100) {
+                const buildingName = determineBuilding(latitude, longitude);
+                if (callback) callback(buildingName);
+            } else {
+                console.warn(`Low accuracy (${accuracy}m) - location may be unreliable`);
+                if (callback) callback("Location accuracy too low");
+            }
+        },
+        (error) => {
+            let errorMessage = handleGeolocationError(error);
+            if (callback) callback(errorMessage);
+        },
+        options
+    );
 }
 
-function showPosition(position, callback) {
-    var latitude = position.coords.latitude;
-    var longitude = position.coords.longitude;
-    var accuracy = position.coords.accuracy;
-
-    if (accuracy > 100) {
-        var accWarning = document.createElement("h2");
-        accWarning.textContent = "WARNING! Results will not be accurate, accuracy radius is too high!";
-        document.body.appendChild(accWarning);
-    }
+function determineBuilding(latitude, longitude) {
 
     // SULB Building Coordinates
     const SULBP1 = { lat: 41.584527, lng: -87.474722 }; // Top Left
@@ -85,36 +104,53 @@ function showPosition(position, callback) {
     const COUNSELINGP3 = { lat: 41.579230178868485, lng: -87.47500454853608 }; // Bot Right
 
     if (latitude >= SULBP3.lat && latitude <= SULBP1.lat && longitude >= SULBP1.lng && longitude <= SULBP2.lng) {
-        building = "SULB";
+        return "SULB";
     } else if (latitude >= GYTEP3.lat && latitude <= GYTEP1.lat && longitude >= GYTEP1.lng && longitude <= GYTEP2.lng) {
-        building = "Gyte";
+        return "Gyte";
     } else if (latitude >= POTTERP3.lat && latitude <= POTTERP1.lat && longitude >= POTTERP1.lng && longitude <= POTTERP2.lng) {
-        building = "Potter";
+        return "Potter";
     } else if (latitude >= POWERSP3.lat && latitude <= POWERSP1.lat && longitude >= POWERSP1.lng && longitude <= POWERSP2.lng) {
-        building = "Powers";
+        return "Powers";
     } else if (latitude >= CLOP3.lat && latitude <= CLOP1.lat && longitude >= CLOP1.lng && longitude <= CLOP2.lng) {
-        building = "CLO";
+        return "CLO";
     } else if (latitude >= NILSP3.lat && latitude <= NILSP1.lat && longitude >= NILSP1.lng && longitude <= NILSP2.lng) {
-        building = "NILS";
+        return "NILS";
     } else if (latitude >= PORTERP3.lat && latitude <= PORTERP1.lat && longitude >= PORTERP1.lng && longitude <= PORTERP2.lng) {
-        building = "Porter";
+        return "Porter";
     } else if (latitude >= OFFICEP3.lat && latitude <= OFFICEP1.lat && longitude >= OFFICEP1.lng && longitude <= OFFICEP2.lng) {
-        building = "Office of Admissions";
+        return "Office of Admissions";
     } else if (latitude >= FITNESSP3.lat && latitude <= FITNESSP1.lat && longitude >= FITNESSP1.lng && longitude <= FITNESSP2.lng) {
-        building = "Fitness Center";
+        return "Fitness Center";
     } else if (latitude >= COUNSELINGP3.lat && latitude <= COUNSELINGP1.lat && longitude >= COUNSELINGP1.lng && longitude <= COUNSELINGP2.lng) {
-        building = "Counseling Center";
+        return "Counseling Center";
     } else if (latitude >= ANDERSONP3.lat && latitude <= ANDERSONP1.lat && longitude >= ANDERSONP1.lng && longitude <= ANDERSONP2.lng) {
-        building = "Anderson";
-    } else {
-        building = "Outside";
+        return "Anderson";
     }
+    
+    return "Outside";
 
-    if (callback) {
-        callback(building);
-    }
 }
 
+function handleGeolocationError(error) {
+    let errorMessage;
+    switch(error.code) {
+        case GeolocationPositionError.PERMISSION_DENIED:
+            errorMessage = "Please enable location services";
+            break;
+        case GeolocationPositionError.POSITION_UNAVAILABLE:
+            errorMessage = "Unable to determine location";
+            break;
+        case GeolocationPositionError.TIMEOUT:
+            errorMessage = "Location request timed out";
+            break;
+        default:
+            errorMessage = "Location error occurred";
+    }
+    console.error(`Geolocation error: ${errorMessage}`, error);
+    return errorMessage;
+}
+
+// Building Coordinates 
 export const SULBP1 = { lat: 41.584527, lng: -87.474722 }; // Top Left
 export const SULBP2 = { lat: 41.584527, lng: -87.473389 }; // Top Right
 export const SULBP3 = { lat: 41.584083, lng: -87.473306 }; // Bot Right
@@ -148,26 +184,5 @@ export const FITNESSP3 = { lat: 41.579953480651504, lng: -87.47348105396162 }; /
 export const COUNSELINGP1 = { lat: 41.579594338742616, lng: -87.47526740499988 }; // Top Left
 export const COUNSELINGP2 = { lat: 41.57959132916529, lng: -87.47498174976117 }; // Top Right
 export const COUNSELINGP3 = { lat: 41.579230178868485, lng: -87.47500454853608 }; // Bot Right
-
-
-function showError(error) {
-    console.log(error);
-    let errorMessage;
-    switch(error.code) {
-        case error.PERMISSION_DENIED:
-            errorMessage = "Location access denied by user.";
-            break;
-        case error.POSITION_UNAVAILABLE:
-            errorMessage = "Location information unavailable. Please ensure you're using HTTPS or localhost.";
-            break;
-        case error.TIMEOUT:
-            errorMessage = "Location request timed out.";
-            break;
-        default:
-            errorMessage = "An unknown error occurred.";
-    }
-    building = errorMessage;
-    console.log(errorMessage);
-}
 
 export { getLocation, building };

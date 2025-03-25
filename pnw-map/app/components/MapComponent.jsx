@@ -1,8 +1,7 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useRef } from "react";
 
 function calculateBuildingCenter(corners) {
   // Ensure we have exactly 3 corners
@@ -64,17 +63,18 @@ var redIcon = new L.Icon({
  */
 function addMarker(map, coords, popupText, color) {
   const markerOptions = {
-    icon: color === "green"
-      ? greenIcon
-      : color === "blue"
-      ? blueIcon
-      : color === "red"
-      ? redIcon
-      : color === "blue",
+    icon:
+      color === "green"
+        ? greenIcon
+        : color === "blue"
+        ? blueIcon
+        : color === "red"
+        ? redIcon
+        : color === "blue",
   };
 
   // Create custom popup content with delete button
-  const popupContent = document.createElement('div');
+  const popupContent = document.createElement("div");
   popupContent.innerHTML = `
     <div style="margin-bottom: 5px;">${popupText}</div>
     <button 
@@ -98,12 +98,12 @@ function addMarker(map, coords, popupText, color) {
     .addTo(map);
 
   // Add click handler to delete button
-  const deleteButton = popupContent.querySelector('button');
-  deleteButton.addEventListener('click', () => {
+  const deleteButton = popupContent.querySelector("button");
+  deleteButton.addEventListener("click", () => {
     if (confirm("Delete this marker?")) {
       map.removeLayer(marker);
       // Remove from markersRef if needed
-      const index = markersRef.current.indexOf(marker);  //this throws an error because markersRef isnt defined yet
+      const index = markersRef.current.indexOf(marker); //this throws an error because markersRef isnt defined yet
       if (index > -1) {
         markersRef.current.splice(index, 1);
       }
@@ -113,31 +113,34 @@ function addMarker(map, coords, popupText, color) {
   return marker;
 }
 
-function currentLocation() {
-  console.log("Getting current location...");
-  if (navigator.geolocation) {
-    console.log("Geolocation is supported by this browser.");
-    navigator.geolocation.getCurrentPosition((position) => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      console.log(lat, lng);
-    }
-  );
-  } else {
-    console.error("Geolocation is not supported by this browser.");
-  }
-}
-
-currentLocation();
-
 export default function MapComponent({ buildingPoints }) {
   const markersRef = useRef([]); // Store markers in a ref
+  const [userLocation, setUserLocation] = useState(null);
 
   useEffect(() => {
     // Define the bounds (adjust these coordinates to your desired box)
     const southWest = L.latLng(41.57752532677525, -87.47749638635923); // Bottom left corner
     const northEast = L.latLng(41.58841412396277, -87.47080018646325); // Top right corner
     const bounds = L.latLngBounds(southWest, northEast);
+
+    // Get user's location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log("User location:", latitude, longitude);
+          setUserLocation([latitude, longitude]);
+        },
+        (error) => {
+          console.error("Error getting location:", error.message);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0,
+        }
+      );
+    }
 
     // Initialize the map with restrictions
     const map = L.map("map", {
@@ -150,6 +153,10 @@ export default function MapComponent({ buildingPoints }) {
       bounceAtZoomLimits: true,
       doubleClickZoom: false,
     });
+
+    if (userLocation) {
+      addMarker(map, userLocation, "Your Location", "green").addTo(map);
+    }
 
     const clearAllMarkers = () => {
       markersRef.current.forEach((marker) => map.removeLayer(marker));
@@ -168,7 +175,7 @@ export default function MapComponent({ buildingPoints }) {
     <input type="text" id="desc" name="desc" required>
     <label for="color">Color:</label>
     <select id="color" name="color">
-      <option value="default">Default</option>
+      <option value="blue">Default</option>
       <option value="green">Green</option>
       <option value="red">Red</option>
       <option value="blue">Blue</option>
@@ -227,30 +234,31 @@ export default function MapComponent({ buildingPoints }) {
 
       const clearControl = L.Control.extend({
         options: {
-          position: 'topleft'
+          position: "topleft",
         },
-        onAdd: function() {
-          const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-          const button = L.DomUtil.create('a', '', container);
-          button.innerHTML = '🗑️';  //TODO: fix, it places a new trashcan icon on each marker place so yeah
-          button.title = 'Clear all markers';
-          button.style.fontSize = '20px';
-          button.style.textAlign = 'center';
-          button.style.cursor = 'pointer';
-          
-          L.DomEvent.on(button, 'click', function() {
-            if (confirm('Clear all custom markers?')) {
+        onAdd: function () {
+          const container = L.DomUtil.create(
+            "div",
+            "leaflet-bar leaflet-control"
+          );
+          const button = L.DomUtil.create("a", "", container);
+          button.innerHTML = "🗑️"; //TODO: fix, it places a new trashcan icon on each marker place so yeah
+          button.title = "Clear all markers";
+          button.style.fontSize = "20px";
+          button.style.textAlign = "center";
+          button.style.cursor = "pointer";
+
+          L.DomEvent.on(button, "click", function () {
+            if (confirm("Clear all custom markers?")) {
               clearAllMarkers();
             }
           });
-          
+
           return container;
-        }
+        },
       });
 
       map.addControl(new clearControl());
-     
-
     });
 
     // Add OpenStreetMap tiles
@@ -296,7 +304,7 @@ export default function MapComponent({ buildingPoints }) {
       clearAllMarkers();
       map.remove();
     };
-  }, [buildingPoints]);
+  }, [buildingPoints, userLocation]);
 
   return <div id="map" style={{ height: "100vh", width: "100%" }}></div>;
 }
