@@ -5,6 +5,8 @@ import axios from 'axios';
 import ICAL from 'ical.js';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
+import Navbar from '../components/Navbar';
+
 
 export default function Events() {
     const [events, setEvents] = useState([]);
@@ -48,6 +50,8 @@ export default function Events() {
     }, []);
 
     return (
+        <>
+         <Navbar />
         <div style={{ padding: '20px' }}>
             <div style={{ 
                 display: 'flex', 
@@ -94,5 +98,6 @@ export default function Events() {
                 />
             </div>
         </div>
+        </>
     );
 }

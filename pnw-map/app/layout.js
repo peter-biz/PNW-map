@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import 'leaflet/dist/leaflet.css';
+import Navbar from './components/Navbar';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,10 +24,10 @@ export default function RootLayout({ children }) {
       <head>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <main style={{ paddingTop: '60px' }}>
+          {children}
+        </main>
       </body>
     </html>
   );
