@@ -113,76 +113,78 @@ function addMarker(map, coords, popupText, color) {
   return marker;
 }
 
-export default function MapComponent({ buildingPoints, currentBuilding }) {
-  const markersRef = useRef([]); // Store markers in a ref
+
+export default function MapComponent({ buildingPoints }) {
+  const mapRef = useRef(null);
+  const locationMarkerRef = useRef(null);
+  const markersRef = useRef([]);
   const [userLocation, setUserLocation] = useState(null);
 
+  // Initialize map only once
   useEffect(() => {
-    // Define the bounds (adjust these coordinates to your desired box)
-    const southWest = L.latLng(41.57752532677525, -87.47749638635923); // Bottom left corner
-    const northEast = L.latLng(41.58841412396277, -87.47080018646325); // Top right corner
+    const southWest = L.latLng(41.57752532677525, -87.47749638635923);
+    const northEast = L.latLng(41.58841412396277, -87.47080018646325);
     const bounds = L.latLngBounds(southWest, northEast);
 
-    // Get user's location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          console.log("User location:", latitude, longitude);
-          setUserLocation([latitude, longitude]);
-        },
-        (error) => {
-          console.error("Error getting location:", error.message);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0,
-        }
-      );
-    }
+    // Only create map if it doesn't exist
+    if (!mapRef.current) {
+      const map = L.map("map", {
+        zoomControl: false,
+        maxBounds: bounds,
+        maxBoundsViscosity: 1.0,
+        minZoom: 17,
+        maxZoom: 19,
+        dragging: true,
+        bounceAtZoomLimits: true,
+        doubleClickZoom: false,
+      });
 
-    // Initialize the map with restrictions
-    const map = L.map("map", {
-      zoomControl: false,
-      maxBounds: bounds, // Restrict panning to these bounds
-      maxBoundsViscosity: 1.0, // How hard the bounds resist dragging (0-1)
-      minZoom: 17,
-      maxZoom: 19,
-      dragging: true,
-      bounceAtZoomLimits: true,
-      doubleClickZoom: false,
-    });
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        minZoom: 17,
+        bounds: bounds,
+        attribution: "© OpenStreetMap contributors",
+      }).addTo(map);
+      
+      map.fitBounds(bounds);
+      mapRef.current = map;
 
-    if (userLocation) {
-      addMarker(map, userLocation, "Your Location", "green").addTo(map);
-    }
+      // Add building markers
+      const buildingMarkers = [
+        { name: 'SULB', corners: buildingPoints.SULB },
+        { name: 'GYTE', corners: buildingPoints.GYTE },
+        { name: 'POTTER', corners: buildingPoints.POTTER }
+      ];
 
-    const clearAllMarkers = () => {
-      markersRef.current.forEach((marker) => map.removeLayer(marker));
-      markersRef.current = [];
-    };
+      buildingMarkers.forEach(building => {
+        const corners = [
+          [building.corners[0].lat, building.corners[0].lng],
+          [building.corners[1].lat, building.corners[1].lng],
+          [building.corners[2].lat, building.corners[2].lng]
+        ];
+        const center = calculateBuildingCenter(corners);
+        L.marker(center).bindPopup(building.name).addTo(map);
+      });
 
-    // Add click event handler to the map
-    map.on("dblclick", function (e) {
-      // Get clicked coordinates
-      const coords = [e.latlng.lat, e.latlng.lng];
+      // Add double-click marker functionality
+      map.on("dblclick", function (e) {
+        const coords = [e.latlng.lat, e.latlng.lng];
 
-      // Create a form element
-      const form = document.createElement("form");
-      form.innerHTML = `
-    <label for="desc">Description:</label>
-    <input type="text" id="desc" name="desc" required>
-    <label for="color">Color:</label>
-    <select id="color" name="color">
-      <option value="blue">Default</option>
-      <option value="green">Green</option>
-      <option value="red">Red</option>
-      <option value="blue">Blue</option>
-    </select>
-    <button type="submit">Add Marker</button>
-  `;
-      form.style.position = "absolute";
+        const form = document.createElement("form");
+        form.innerHTML = `
+          <label for="desc">Description:</label>
+          <input type="text" id="desc" name="desc" required>
+          <label for="color">Color:</label>
+          <select id="color" name="color">
+            <option value="blue">Default</option>
+            <option value="green">Green</option>
+            <option value="red">Red</option>
+            <option value="blue">Blue</option>
+          </select>
+          <button type="submit">Add Marker</button>
+        `;
+        
+        form.style.position = "absolute";
       form.style.top = `${e.originalEvent.clientY}px`;
       form.style.left = `${e.originalEvent.clientX}px`;
       form.style.backgroundColor = "#FAF9F6";
@@ -231,18 +233,15 @@ export default function MapComponent({ buildingPoints, currentBuilding }) {
         document.body.removeChild(form);
         document.removeEventListener("click", closeForm);
       });
+      });
 
+      // Clear markers control
       const clearControl = L.Control.extend({
-        options: {
-          position: "topleft",
-        },
+        options: { position: "topleft" },
         onAdd: function () {
-          const container = L.DomUtil.create(
-            "div",
-            "leaflet-bar leaflet-control"
-          );
+          const container = L.DomUtil.create("div", "leaflet-bar leaflet-control");
           const button = L.DomUtil.create("a", "", container);
-          button.innerHTML = "🗑️"; //TODO: fix, it places a new trashcan icon on each marker place so yeah
+          button.innerHTML = "🗑️";
           button.title = "Clear all markers";
           button.style.fontSize = "20px";
           button.style.textAlign = "center";
@@ -250,7 +249,8 @@ export default function MapComponent({ buildingPoints, currentBuilding }) {
 
           L.DomEvent.on(button, "click", function () {
             if (confirm("Clear all custom markers?")) {
-              clearAllMarkers();
+              markersRef.current.forEach((marker) => map.removeLayer(marker));
+              markersRef.current = [];
             }
           });
 
@@ -259,52 +259,55 @@ export default function MapComponent({ buildingPoints, currentBuilding }) {
       });
 
       map.addControl(new clearControl());
-    });
-
-    // Add OpenStreetMap tiles
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      minZoom: 17,
-      bounds: bounds, // Restrict tile loading to bounds
-      attribution: "© OpenStreetMap contributors",
-    }).addTo(map);
-
-    // Fit the map to the bounds
-    map.fitBounds(bounds);
-
-    // Add markers for buildings
-    const SULBcorners = [
-      [buildingPoints.SULB[0].lat, buildingPoints.SULB[0].lng], //Top Left
-      [buildingPoints.SULB[1].lat, buildingPoints.SULB[1].lng], //Top Right
-      [buildingPoints.SULB[2].lat, buildingPoints.SULB[2].lng], //Bot Right
-    ];
-    const SULBcenter = calculateBuildingCenter(SULBcorners);
-    L.marker(SULBcenter).bindPopup("SULB").addTo(map);
-
-    const GYTEcorners = [
-      [buildingPoints.GYTE[0].lat, buildingPoints.GYTE[0].lng], //Top Left
-      [buildingPoints.GYTE[1].lat, buildingPoints.GYTE[1].lng], //Top Right
-      [buildingPoints.GYTE[2].lat, buildingPoints.GYTE[2].lng], //Bot Right
-    ];
-    const GYTEcenter = calculateBuildingCenter(GYTEcorners);
-    L.marker(GYTEcenter).bindPopup("GYTE").addTo(map);
-
-    const POTTERcorners = [
-      [buildingPoints.POTTER[0].lat, buildingPoints.POTTER[0].lng], //Top Left
-      [buildingPoints.POTTER[1].lat, buildingPoints.POTTER[1].lng], //Top Right
-      [buildingPoints.POTTER[2].lat, buildingPoints.POTTER[2].lng], //Bot Right
-    ];
-    const POTTERcenter = calculateBuildingCenter(POTTERcorners);
-    L.marker(POTTERcenter).bindPopup("POTTER").addTo(map);
-
-    //test location icon - green
-    addMarker(map, [41.584527, -87.474722], "Test Location", "green");
+    }
 
     return () => {
-      clearAllMarkers();
-      map.remove();
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
     };
-  }, [buildingPoints, userLocation]);
+  }, []); // Empty dependency array - map initializes only once
 
-  return <div id="map" style={{ height: "100vh", width: "100%" }}></div>;
+  // Handle location updates separately
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    if (navigator.geolocation) {
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation([latitude, longitude]);
+
+          // Update location marker
+          if (locationMarkerRef.current) {
+            mapRef.current.removeLayer(locationMarkerRef.current);
+          }
+          
+          locationMarkerRef.current = L.marker([latitude, longitude], {
+            icon: greenIcon
+          })
+            .bindPopup("Your Location")
+            .addTo(mapRef.current);
+        },
+        (error) => {
+          console.error("Error getting location:", error.message);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0,
+        }
+      );
+
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+        if (locationMarkerRef.current) {
+          mapRef.current?.removeLayer(locationMarkerRef.current);
+        }
+      };
+    }
+  }, []); // Empty dependency array - location watching starts only once
+
+  return <div id="map" style={{ height: "100vh", width: "100%" }} />;
 }

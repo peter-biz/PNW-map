@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getLocation, building } from "./components/location.jsx";
 import { buildingPoints } from "./components/buildings";
@@ -17,28 +17,20 @@ const WeatherWidget = dynamic(
 
 export default function Home() {
   const [currentBuilding, setCurrentBuilding] = useState("Searching...");
-  const [locationError, setLocationError] = useState(null);
-
-  const updateLocation = useCallback(() => {
-    getLocation((result) => {
-      if (result !== currentBuilding) {  // Only update if location changed
-        setCurrentBuilding(result);
-        console.log("Location update:", result);
-      }
-    });
-  }, [currentBuilding]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {  // Check if we're in the browser
-      updateLocation();
-      const intervalId = setInterval(updateLocation, 10000);
-      
-      return () => {
-        clearInterval(intervalId);
-      };
-    }
-  }, [updateLocation]);
+    // Update location every 10 seconds
+    const updateLocation = () => {
+      getLocation((buildingName) => {
+        setCurrentBuilding(buildingName);
+      });
+    };
 
+    updateLocation(); // Initial call
+    const intervalId = setInterval(updateLocation, 10000);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   return (
     <div style={{ position: 'relative' }}>
@@ -68,10 +60,7 @@ export default function Home() {
         </div>
       </div>
       <WeatherWidget />
-      <MapComponent buildingPoints={buildingPoints}
-      currentBuilding={currentBuilding}
-      key="map-component"  // Add a stable key
-     />
+      <MapComponent buildingPoints={buildingPoints} />
     </div>
   );
 }
