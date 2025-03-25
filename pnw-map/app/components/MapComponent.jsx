@@ -113,7 +113,7 @@ function addMarker(map, coords, popupText, color) {
   return marker;
 }
 
-export default function MapComponent({ buildingPoints }) {
+export default function MapComponent({ buildingPoints, currentBuilding }) {
   const markersRef = useRef([]); // Store markers in a ref
   const [userLocation, setUserLocation] = useState(null);
 
