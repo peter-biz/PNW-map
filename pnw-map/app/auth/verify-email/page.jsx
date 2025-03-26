@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from "../../lib/supabase";
 
 function VerifyEmailContent() {
   const [loading, setLoading] = useState(false);
