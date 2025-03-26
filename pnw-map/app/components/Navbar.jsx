@@ -7,6 +7,11 @@ import { supabase } from '../lib/supabase';
 export default function Navbar({ currentBuilding }) {
   const { user } = useAuth()
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    window.location.reload()
+  }
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -34,7 +39,7 @@ export default function Navbar({ currentBuilding }) {
                   My Favorites
                 </Link>
                 <button
-                  onClick={() => supabase.auth.signOut()}
+                  onClick={handleSignOut}
                   className="text-gray-600 hover:text-gray-900"
                 >
                   Sign Out

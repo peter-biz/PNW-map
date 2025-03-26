@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useAuth } from "../components/AuthProvider";
+import { supabase } from "../lib/supabase";
 
 function calculateBuildingCenter(corners) {
   // Ensure we have exactly 3 corners
@@ -9,7 +11,7 @@ function calculateBuildingCenter(corners) {
     throw new Error("Exactly three corner coordinates are required");
   }
 
-  // Method 1: Calculate the centroid (geometric center) of the triangle
+  // calculate the centroid (geometric center) of the triangle
   const centroid = calculateCentroid(corners);
 
   return centroid;
@@ -55,25 +57,43 @@ var redIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-/* TODO: need to add an interactive layer
- * Allows the user to add a marker to the map
- * @param {Object} map - The map object
- * @param {Array} coords - The coordinates of the marker
- * @param {String} popupText - The text to display when the marker is clicked
- */
-function addMarker(map, coords, popupText, color) {
+async function addMarkerToDatabase(userId, coords, description, color) {
+  const { data, error } = await supabase
+    .from("markers")
+    .insert([
+      {
+        user_id: userId,
+        latitude: coords[0],
+        longitude: coords[1],
+        description: description,
+        color: color,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function deleteMarkerFromDatabase(markerId) {
+  const { error } = await supabase.from("markers").delete().eq("id", markerId);
+
+  if (error) throw error;
+}
+
+function addMarker(
+  map,
+  coords,
+  popupText,
+  color,
+  markerId = null,
+  markersRef = null
+) {
   const markerOptions = {
-    icon:
-      color === "green"
-        ? greenIcon
-        : color === "blue"
-        ? blueIcon
-        : color === "red"
-        ? redIcon
-        : color === "blue",
+    icon: color === "green" ? greenIcon : color === "red" ? redIcon : blueIcon,
   };
 
-  // Create custom popup content with delete button
   const popupContent = document.createElement("div");
   popupContent.innerHTML = `
     <div style="margin-bottom: 5px;">${popupText}</div>
@@ -88,6 +108,7 @@ function addMarker(map, coords, popupText, color) {
         width: 100%;
         margin-top: 5px;
       "
+      data-marker-id="${markerId}"
     >
       Delete Marker
     </button>
@@ -97,15 +118,26 @@ function addMarker(map, coords, popupText, color) {
     .bindPopup(popupContent)
     .addTo(map);
 
-  // Add click handler to delete button
+  marker.dbId = markerId;
+
   const deleteButton = popupContent.querySelector("button");
-  deleteButton.addEventListener("click", () => {
+  deleteButton.addEventListener("click", async () => {
     if (confirm("Delete this marker?")) {
-      map.removeLayer(marker);
-      // Remove from markersRef if needed
-      const index = markersRef.current.indexOf(marker); //this throws an error because markersRef isnt defined yet
-      if (index > -1) {
-        markersRef.current.splice(index, 1);
+      try {
+        if (marker.dbId) {
+          await deleteMarkerFromDatabase(marker.dbId);
+        }
+        map.removeLayer(marker);
+        if (markersRef?.current) {
+          // Add null check
+          const index = markersRef.current.indexOf(marker);
+          if (index > -1) {
+            markersRef.current.splice(index, 1);
+          }
+        }
+      } catch (error) {
+        console.error("Error deleting marker:", error);
+        alert("Failed to delete marker");
       }
     }
   });
@@ -113,39 +145,44 @@ function addMarker(map, coords, popupText, color) {
   return marker;
 }
 
-//TODO: add panes to buildings
+//TODO: add panes to buildings, BUGGY, since there are only 3 points, it create a triangle pane for rectangle buildings,
+//also the panes overide/remove the building markers (this is fine if the panes have a text/title on them)
 function createBuildingPolygon(map, corners, buildingInfo) {
-  const polygonCoords = corners.map(corner => [corner.lat, corner.lng]);
+  const polygonCoords = corners.map((corner) => [corner.lat, corner.lng]);
   // Close the polygon by adding the first point again
   polygonCoords.push([corners[0].lat, corners[0].lng]);
 
   const polygon = L.polygon(polygonCoords, {
-    color: '#3388ff',
-    fillColor: '#3388ff',
+    color: "#3388ff",
+    fillColor: "#3388ff",
     fillOpacity: 0.2,
-    weight: 2
+    weight: 2,
   }).addTo(map);
 
-  polygon.on('click', () => {
-    const content = document.createElement('div');
-    content.className = 'building-popup';
+  polygon.on("click", () => {
+    const content = document.createElement("div");
+    content.className = "building-popup";
     content.innerHTML = `
       <h3 class="text-lg font-bold mb-2">${buildingInfo.name}</h3>
       <div class="floor-buttons">
-        ${buildingInfo.floors.map(floor => `
+        ${buildingInfo.floors
+          .map(
+            (floor) => `
           <button 
             class="floor-btn w-full mb-2 p-2 text-left hover:bg-gray-100 rounded"
             data-floor="${floor.level}"
           >
             ${floor.name}
           </button>
-        `).join('')}
+        `
+          )
+          .join("")}
       </div>
     `;
 
     const popup = L.popup({
       maxWidth: 300,
-      className: 'building-popup'
+      className: "building-popup",
     })
       .setLatLng(polygon.getBounds().getCenter())
       .setContent(content);
@@ -153,22 +190,22 @@ function createBuildingPolygon(map, corners, buildingInfo) {
     map.openPopup(popup);
 
     // Add click handlers for floor buttons
-    content.querySelectorAll('.floor-btn').forEach(button => {
-      button.addEventListener('click', () => {
-        const floorLevel = button.getAttribute('data-floor');
-        const floor = buildingInfo.floors.find(f => f.level === floorLevel);
-        
+    content.querySelectorAll(".floor-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        const floorLevel = button.getAttribute("data-floor");
+        const floor = buildingInfo.floors.find((f) => f.level === floorLevel);
+
         // Create floor plan overlay
         const bounds = polygon.getBounds();
         const image = L.imageOverlay(floor.planUrl, bounds, {
           opacity: 0.8,
-          zIndex: 1000
+          zIndex: 1000,
         }).addTo(map);
 
         // Add close button
-        const closeBtn = L.control({ position: 'topright' });
-        closeBtn.onAdd = function() {
-          const div = L.DomUtil.create('div', 'close-floor-plan');
+        const closeBtn = L.control({ position: "topright" });
+        closeBtn.onAdd = function () {
+          const div = L.DomUtil.create("div", "close-floor-plan");
           div.innerHTML = `
             <button class="bg-white p-2 rounded shadow">
               ❌ Close Floor Plan
@@ -189,10 +226,47 @@ function createBuildingPolygon(map, corners, buildingInfo) {
 }
 
 export default function MapComponent({ buildingPoints }) {
+  const { user } = useAuth();
   const mapRef = useRef(null);
   const locationMarkerRef = useRef(null);
   const markersRef = useRef([]);
   const [userLocation, setUserLocation] = useState(null);
+
+  // Move loadUserMarkers to its own function outside useEffect
+  const loadUserMarkers = async () => {
+    if (!mapRef.current || !user) return;
+    try {
+      const { data: markers, error } = await supabase
+        .from("markers")
+        .select("*")
+        .eq("user_id", user.id);
+      if (error) throw error;
+      // Clear existing markers first
+      markersRef.current.forEach((marker) => {
+        marker.remove();
+      });
+      markersRef.current = [];
+      // Add new markers
+      markers?.forEach((marker) => {
+        const newMarker = addMarker(
+          mapRef.current,
+          [marker.latitude, marker.longitude],
+          marker.description,
+          marker.color,
+          marker.id,
+          markersRef
+        );
+        markersRef.current.push(newMarker);
+      });
+    } catch (error) {
+      console.error("Error loading markers:", error);
+    }
+  };
+
+  // Call loadUserMarkers whenever user or map changes
+  useEffect(() => {
+    loadUserMarkers();
+  }, [user, mapRef.current]);
 
   // Initialize map only once
   useEffect(() => {
@@ -219,22 +293,22 @@ export default function MapComponent({ buildingPoints }) {
         bounds: bounds,
         attribution: "© OpenStreetMap contributors",
       }).addTo(map);
-      
+
       map.fitBounds(bounds);
       mapRef.current = map;
 
       // Add building markers
       const buildingMarkers = [
-        { name: 'SULB', corners: buildingPoints.SULB },
-        { name: 'GYTE', corners: buildingPoints.GYTE },
-        { name: 'POTTER', corners: buildingPoints.POTTER }
+        { name: "SULB", corners: buildingPoints.SULB },
+        { name: "GYTE", corners: buildingPoints.GYTE },
+        { name: "POTTER", corners: buildingPoints.POTTER },
       ];
 
-      buildingMarkers.forEach(building => {
+      buildingMarkers.forEach((building) => {
         const corners = [
           [building.corners[0].lat, building.corners[0].lng],
           [building.corners[1].lat, building.corners[1].lng],
-          [building.corners[2].lat, building.corners[2].lng]
+          [building.corners[2].lat, building.corners[2].lng],
         ];
         const center = calculateBuildingCenter(corners);
         L.marker(center).bindPopup(building.name).addTo(map);
@@ -242,6 +316,11 @@ export default function MapComponent({ buildingPoints }) {
 
       // Add double-click marker functionality
       map.on("dblclick", function (e) {
+        if (!user) {
+          alert("Please sign in to add markers");
+          return;
+        }
+
         const coords = [e.latlng.lat, e.latlng.lng];
 
         const form = document.createElement("form");
@@ -257,63 +336,87 @@ export default function MapComponent({ buildingPoints }) {
           </select>
           <button type="submit">Add Marker</button>
         `;
-        
+
         form.style.position = "absolute";
-      form.style.top = `${e.originalEvent.clientY}px`;
-      form.style.left = `${e.originalEvent.clientX}px`;
-      form.style.backgroundColor = "#FAF9F6";
-      form.style.padding = "10px";
-      form.style.border = "1px solid black";
-      form.style.borderRadius = "4px";
-      form.style.zIndex = "1000";
+        form.style.top = `${e.originalEvent.clientY}px`;
+        form.style.left = `${e.originalEvent.clientX}px`;
+        form.style.backgroundColor = "#FAF9F6";
+        form.style.padding = "10px";
+        form.style.border = "1px solid black";
+        form.style.borderRadius = "4px";
+        form.style.zIndex = "1000";
 
-      // Add some basic styling for form elements
-      const style = document.createElement("style");
-      style.textContent = `
-    .marker-form input, .marker-form select {
-      margin: 5px 0;
-      padding: 5px;
-      width: 100%;
-    }
-    .marker-form button {
-      margin-top: 10px;
-      padding: 5px 10px;
-      background-color: green;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-  `;
-      form.classList.add("marker-form");
-      document.head.appendChild(style);
-      document.body.appendChild(form);
+        // Add some basic styling for form elements
+        const style = document.createElement("style");
+        style.textContent = `
+          .marker-form input, .marker-form select {
+            margin: 5px 0;
+            padding: 5px;
+            width: 100%;
+          }
+          .marker-form button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+          }
+        `;
+        form.classList.add("marker-form");
+        document.head.appendChild(style);
+        document.body.appendChild(form);
 
-      // Add click handler to close form when clicking outside
-      const closeForm = (e) => {
-        if (!form.contains(e.target)) {
+        // Add click handler to close form when clicking outside
+        const closeForm = (e) => {
+          if (!form.contains(e.target)) {
+            document.body.removeChild(form);
+            document.removeEventListener("click", closeForm);
+          }
+        };
+        setTimeout(() => document.addEventListener("click", closeForm), 0);
+
+        form.addEventListener("submit", async function (event) {
+          event.preventDefault();
+          const popupText = form.desc.value;
+          const color = form.color.value;
+
+          try {
+            const markerData = await addMarkerToDatabase(
+              user.id,
+              coords,
+              popupText,
+              color
+            );
+
+            const marker = addMarker(
+              map,
+              coords,
+              popupText,
+              color,
+              markerData.id,
+              markersRef
+            );
+            markersRef.current.push(marker);
+          } catch (error) {
+            console.error("Error saving marker:", error);
+            alert("Failed to save marker");
+          }
+
           document.body.removeChild(form);
           document.removeEventListener("click", closeForm);
-        }
-      };
-      setTimeout(() => document.addEventListener("click", closeForm), 0);
-
-      form.addEventListener("submit", function (event) {
-        event.preventDefault();
-        const popupText = form.desc.value;
-        const color = form.color.value;
-        const marker = addMarker(map, coords, popupText, color);
-        markersRef.current.push(marker);
-        document.body.removeChild(form);
-        document.removeEventListener("click", closeForm);
-      });
+        });
       });
 
       // Clear markers control
       const clearControl = L.Control.extend({
         options: { position: "topleft" },
         onAdd: function () {
-          const container = L.DomUtil.create("div", "leaflet-bar leaflet-control");
+          const container = L.DomUtil.create(
+            "div",
+            "leaflet-bar leaflet-control"
+          );
           const button = L.DomUtil.create("a", "", container);
           button.innerHTML = "🗑️";
           button.title = "Clear all markers";
@@ -321,10 +424,19 @@ export default function MapComponent({ buildingPoints }) {
           button.style.textAlign = "center";
           button.style.cursor = "pointer";
 
-          L.DomEvent.on(button, "click", function () {
-            if (confirm("Clear all custom markers?")) {
-              markersRef.current.forEach((marker) => map.removeLayer(marker));
-              markersRef.current = [];
+          L.DomEvent.on(button, "click", async function () {
+            if (!user) return;
+
+            if (confirm("Clear all your markers?")) {
+              try {
+                await supabase.from("markers").delete().eq("user_id", user.id);
+
+                markersRef.current.forEach((marker) => map.removeLayer(marker));
+                markersRef.current = [];
+              } catch (error) {
+                console.error("Error clearing markers:", error);
+                alert("Failed to clear markers");
+              }
             }
           });
 
@@ -333,6 +445,9 @@ export default function MapComponent({ buildingPoints }) {
       });
 
       map.addControl(new clearControl());
+
+      // Load markers after map is initialized
+      loadUserMarkers();
     }
 
     return () => {
@@ -341,7 +456,7 @@ export default function MapComponent({ buildingPoints }) {
         mapRef.current = null;
       }
     };
-  }, []); // Empty dependency array - map initializes only once
+  }, []); // Keep empty dependency array
 
   // Handle location updates separately
   useEffect(() => {
@@ -357,9 +472,9 @@ export default function MapComponent({ buildingPoints }) {
           if (locationMarkerRef.current) {
             mapRef.current.removeLayer(locationMarkerRef.current);
           }
-          
+
           locationMarkerRef.current = L.marker([latitude, longitude], {
-            icon: greenIcon
+            icon: greenIcon,
           })
             .bindPopup("Your Location")
             .addTo(mapRef.current);
