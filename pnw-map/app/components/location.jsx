@@ -18,24 +18,42 @@ function getLocation(callback) {
     }
 
     const options = {
-        enableHighAccuracy: false, // Set to false to prefer WiFi/IP over GPS
-        timeout: 5000,            // Reduced timeout to 5 seconds
-        maximumAge: 0             // Don't use cached position
+        enableHighAccuracy: true,    // Enable high accuracy
+        timeout: 10000,             // Increase timeout to 10 seconds
+        maximumAge: 5000,          // Cache position for 5 seconds
     };
 
-    // Try to get position
+    // Add a fallback for lower accuracy if high accuracy fails
     navigator.geolocation.getCurrentPosition(
         (position) => {
             const { latitude, longitude, accuracy } = position.coords;
-            console.log(`Location obtained - Lat: ${latitude}, Lng: ${longitude}, Accuracy: ${accuracy}m`);
+            console.log(`High accuracy location - Lat: ${latitude}, Lng: ${longitude}, Accuracy: ${accuracy}m`);
             
-            // Only update building if accuracy is reasonable
-            if (accuracy <= 100) {
+            // Increase accuracy threshold for indoor positioning
+            if (accuracy <= 150) { // Increased from 100m to 150m
                 const buildingName = determineBuilding(latitude, longitude);
                 if (callback) callback(buildingName);
             } else {
-                console.warn(`Low accuracy (${accuracy}m) - location may be unreliable`);
-                if (callback) callback("Location accuracy too low");
+                // Try again with lower accuracy if first attempt wasn't good enough
+                const lowAccuracyOptions = {
+                    enableHighAccuracy: false, // Prefer WiFi/Cell towers over GPS
+                    timeout: 5000,
+                    maximumAge: 0
+                };
+                
+                navigator.geolocation.getCurrentPosition(
+                    (lowAccPos) => {
+                        const { latitude, longitude, accuracy } = lowAccPos.coords;
+                        console.log(`Low accuracy location - Lat: ${latitude}, Lng: ${longitude}, Accuracy: ${accuracy}m`);
+                        const buildingName = determineBuilding(latitude, longitude);
+                        if (callback) callback(buildingName);
+                    },
+                    (error) => {
+                        let errorMessage = handleGeolocationError(error);
+                        if (callback) callback(errorMessage);
+                    },
+                    lowAccuracyOptions
+                );
             }
         },
         (error) => {
