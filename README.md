@@ -1,5 +1,5 @@
 # PNWmap
-# Possible development platform
+# Development platform
 * React, using Next.js
 
 # In order to make changes and run the project locally, follow these steps:
