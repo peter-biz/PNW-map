@@ -1,50 +1,41 @@
 'use client';
-import { getLocation, building } from "./components/location.jsx";
+import { useEffect, useState } from 'react';
+import { getLocation } from "./components/location.jsx";
+import { buildingPoints } from "./components/buildings";
+import dynamic from 'next/dynamic';
+import Navbar from './components/Navbar';
+
+const MapComponent = dynamic(
+  () => import('./components/MapComponent'),
+  { ssr: false }
+);
+
+const WeatherWidget = dynamic(
+  () => import('./components/WeatherWidget'),
+  { ssr: false }
+);
 
 export default function Home() {
-  const handleClick = () => {
-    getLocation((updatedBuilding) => {
-      alert(`Building: ${updatedBuilding}`);
-    });
-  };
+  const [currentBuilding, setCurrentBuilding] = useState("Searching...");
 
-  function currLocation() {
-    console.log("Getting current location");
-    getLocation(displayLocation);
+  useEffect(() => {
+    const updateLocation = () => { //update location every 10 seconds
+      getLocation((buildingName) => {
+        setCurrentBuilding(buildingName);
+      });
+    };
 
-    //update every 5 seconds
-    setInterval(function () {
-      getLocation(displayLocation);
-    }, 5000);
-  }
-
-  function displayLocation(updatedBuilding) {
-    console.log(updatedBuilding);
-    const location = document.getElementById("location");
-    location.innerHTML = updatedBuilding;
-    
-    // Clear any existing error messages
-    const existingError = document.getElementById("location-error");
-    if (existingError) existingError.remove();
-    
-    // Show error message if location access failed
-    if (updatedBuilding.includes("error") || updatedBuilding.includes("denied")) {
-        const errorDiv = document.createElement("div");
-        errorDiv.id = "location-error";
-        errorDiv.style.color = "red";
-        errorDiv.innerHTML = updatedBuilding;
-        location.appendChild(errorDiv);
-    }
-}
-
+    updateLocation();
+    const intervalId = setInterval(updateLocation, 10000);
+    return () => clearInterval(intervalId);
+  }, []);
   return (
-    <div>
-      <h1>map</h1>
-
-      <button onClick={handleClick}>Get Location</button>
-      <p id="location"></p>
-      <button onClick={currLocation}>Get Current Location</button>
-
-    </div>
+    <>
+      <Navbar currentBuilding={currentBuilding} />
+      <div style={{ position: 'relative' }}>
+        <WeatherWidget />
+        <MapComponent buildingPoints={buildingPoints} />
+      </div>
+    </>
   );
 }

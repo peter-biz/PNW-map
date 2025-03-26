@@ -9,8 +9,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #ffffff;
+    --foreground: #000000;
   }
 }
 
@@ -18,4 +18,56 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+}
+.fc {
+  height: 100%;
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.fc-event {
+  cursor: pointer;
+}
+
+.fc-day-today {
+  background-color: rgba(0,123,255,0.1) !important;
+}
+
+@media (max-width: 600px) {
+  .fc {
+    padding: 10px;
+    border-radius: 4px;
+  }
+}
+
+.building-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  overflow: hidden;
+}
+
+.building-popup .leaflet-popup-content {
+  margin: 0;
+  padding: 15px;
+}
+
+.floor-btn {
+  transition: all 0.2s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  padding: 8px;
+}
+
+.floor-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.close-floor-plan {
+  background: white;
+  padding: 5px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
