@@ -113,6 +113,7 @@ function addMarker(map, coords, popupText, color) {
   return marker;
 }
 
+//TODO: add panes to buildings
 
 export default function MapComponent({ buildingPoints }) {
   const mapRef = useRef(null);
