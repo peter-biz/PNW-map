@@ -1,3 +1,5 @@
+
+
 "use client";
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
@@ -113,7 +115,8 @@ function addMarker(map, coords, popupText, color) {
   return marker;
 }
 
-//TODO: add panes to buildings
+//TODO: add panes to buildings, BUGGY, since there are only 3 points, it create a triangle pane for rectangle buildings,
+//also the panes overide/remove the building markers (this is fine if the panes have a text/title on them)
 function createBuildingPolygon(map, corners, buildingInfo) {
   const polygonCoords = corners.map(corner => [corner.lat, corner.lng]);
   // Close the polygon by adding the first point again
@@ -194,6 +197,31 @@ export default function MapComponent({ buildingPoints }) {
   const markersRef = useRef([]);
   const [userLocation, setUserLocation] = useState(null);
 
+  // Building data with floor plans
+  const buildingData = {
+    SULB: {
+      name: 'Student Union & Library Building',
+      floors: [
+        { level: '1', name: 'First Floor', planUrl: '/floorplans/sulb-1.png' },
+        { level: '2', name: 'Second Floor', planUrl: '/floorplans/sulb-2.png' },
+        { level: '3', name: 'Third Floor', planUrl: '/floorplans/sulb-3.png' }
+      ]
+    },
+    GYTE: {
+      name: 'Gyte Building',
+      floors: [
+        { level: '1', name: 'First Floor', planUrl: '/floorplans/gyte-1.png' },
+        { level: '2', name: 'Second Floor', planUrl: '/floorplans/gyte-2.png' }
+      ]
+    },
+    POTTER: {
+      name: 'Potter Building',
+      floors: [
+        { level: '1', name: 'First Floor', planUrl: '/floorplans/potter-1.png' }
+      ]
+    }
+  };
+
   // Initialize map only once
   useEffect(() => {
     const southWest = L.latLng(41.57752532677525, -87.47749638635923);
@@ -223,21 +251,11 @@ export default function MapComponent({ buildingPoints }) {
       map.fitBounds(bounds);
       mapRef.current = map;
 
-      // Add building markers
-      const buildingMarkers = [
-        { name: 'SULB', corners: buildingPoints.SULB },
-        { name: 'GYTE', corners: buildingPoints.GYTE },
-        { name: 'POTTER', corners: buildingPoints.POTTER }
-      ];
-
-      buildingMarkers.forEach(building => {
-        const corners = [
-          [building.corners[0].lat, building.corners[0].lng],
-          [building.corners[1].lat, building.corners[1].lng],
-          [building.corners[2].lat, building.corners[2].lng]
-        ];
-        const center = calculateBuildingCenter(corners);
-        L.marker(center).bindPopup(building.name).addTo(map);
+      // Replace building markers with polygon creation
+      Object.entries(buildingPoints).forEach(([key, corners]) => {
+        if (buildingData[key]) {
+          createBuildingPolygon(map, corners, buildingData[key]);
+        }
       });
 
       // Add double-click marker functionality
@@ -259,54 +277,54 @@ export default function MapComponent({ buildingPoints }) {
         `;
         
         form.style.position = "absolute";
-      form.style.top = `${e.originalEvent.clientY}px`;
-      form.style.left = `${e.originalEvent.clientX}px`;
-      form.style.backgroundColor = "#FAF9F6";
-      form.style.padding = "10px";
-      form.style.border = "1px solid black";
-      form.style.borderRadius = "4px";
-      form.style.zIndex = "1000";
+        form.style.top = `${e.originalEvent.clientY}px`;
+        form.style.left = `${e.originalEvent.clientX}px`;
+        form.style.backgroundColor = "#FAF9F6";
+        form.style.padding = "10px";
+        form.style.border = "1px solid black";
+        form.style.borderRadius = "4px";
+        form.style.zIndex = "1000";
 
-      // Add some basic styling for form elements
-      const style = document.createElement("style");
-      style.textContent = `
-    .marker-form input, .marker-form select {
-      margin: 5px 0;
-      padding: 5px;
-      width: 100%;
-    }
-    .marker-form button {
-      margin-top: 10px;
-      padding: 5px 10px;
-      background-color: green;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-  `;
-      form.classList.add("marker-form");
-      document.head.appendChild(style);
-      document.body.appendChild(form);
+        // Add some basic styling for form elements
+        const style = document.createElement("style");
+        style.textContent = `
+          .marker-form input, .marker-form select {
+            margin: 5px 0;
+            padding: 5px;
+            width: 100%;
+          }
+          .marker-form button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+          }
+        `;
+        form.classList.add("marker-form");
+        document.head.appendChild(style);
+        document.body.appendChild(form);
 
-      // Add click handler to close form when clicking outside
-      const closeForm = (e) => {
-        if (!form.contains(e.target)) {
+        // Add click handler to close form when clicking outside
+        const closeForm = (e) => {
+          if (!form.contains(e.target)) {
+            document.body.removeChild(form);
+            document.removeEventListener("click", closeForm);
+          }
+        };
+        setTimeout(() => document.addEventListener("click", closeForm), 0);
+
+        form.addEventListener("submit", function (event) {
+          event.preventDefault();
+          const popupText = form.desc.value;
+          const color = form.color.value;
+          const marker = addMarker(map, coords, popupText, color);
+          markersRef.current.push(marker);
           document.body.removeChild(form);
           document.removeEventListener("click", closeForm);
-        }
-      };
-      setTimeout(() => document.addEventListener("click", closeForm), 0);
-
-      form.addEventListener("submit", function (event) {
-        event.preventDefault();
-        const popupText = form.desc.value;
-        const color = form.color.value;
-        const marker = addMarker(map, coords, popupText, color);
-        markersRef.current.push(marker);
-        document.body.removeChild(form);
-        document.removeEventListener("click", closeForm);
-      });
+        });
       });
 
       // Clear markers control

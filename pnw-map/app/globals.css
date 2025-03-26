@@ -41,3 +41,33 @@ body {
     border-radius: 4px;
   }
 }
+
+.building-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  overflow: hidden;
+}
+
+.building-popup .leaflet-popup-content {
+  margin: 0;
+  padding: 15px;
+}
+
+.floor-btn {
+  transition: all 0.2s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  padding: 8px;
+}
+
+.floor-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.close-floor-plan {
+  background: white;
+  padding: 5px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
