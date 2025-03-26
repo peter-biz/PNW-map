@@ -1,66 +1,64 @@
-'use client';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+'use client'
+import Link from 'next/link'
+import { useAuth } from './AuthProvider'
+import { supabase } from '../lib/supabase';
+
 
 export default function Navbar({ currentBuilding }) {
-  const pathname = usePathname();
+  const { user } = useAuth()
 
   return (
-    <nav style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 1000,
-      backgroundColor: '#f0f0f0',
-      borderBottom: '1px solid #ddd',
-      padding: '10px 20px'
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        maxWidth: '1200px',
-        margin: '0 auto'
-      }}>
-        <h1 style={{ margin: 0 }}>PNW Campus Map</h1>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '20px' 
-        }}>
-          {pathname === '/' && (
-            <span style={{ 
-              backgroundColor: '#fff',
-              padding: '5px 10px',
-              borderRadius: '4px',
-              border: '1px solid #ddd'
-            }}>
-              Current Location: {currentBuilding}
-            </span>
-          )}
-          <Link 
-            href="/" 
-            style={{
-              color: pathname === '/' ? '#007bff' : '#333',
-              textDecoration: 'none',
-              fontWeight: pathname === '/' ? 'bold' : 'normal'
-            }}
-          >
-            Map
-          </Link>
-          <Link 
-            href="/events" 
-            style={{
-              color: pathname === '/events' ? '#007bff' : '#333',
-              textDecoration: 'none',
-              fontWeight: pathname === '/events' ? 'bold' : 'normal'
-            }}
-          >
-            Events
-          </Link>
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center">
+            <Link href="/" className="text-xl font-bold">
+              PNW Map
+            </Link>
+            {currentBuilding && (
+              <span className="ml-4 text-gray-600">
+                Location: {currentBuilding}
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <Link href="/events" className="text-gray-600 hover:text-gray-900">
+              Events
+            </Link>
+            
+            {user ? (
+              <div className="flex items-center space-x-4">
+                {/* Premium features for logged in users */}
+                <Link href="/favorites" className="text-gray-600 hover:text-gray-900">
+                  My Favorites
+                </Link>
+                <button
+                  onClick={() => supabase.auth.signOut()}
+                  className="text-gray-600 hover:text-gray-900"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-4">
+                <Link 
+                  href="/auth/login"
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Sign in
+                </Link>
+                <Link 
+                  href="/auth/signup"
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  Sign up
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </nav>
-  );
+  )
 }

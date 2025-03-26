@@ -7,7 +7,6 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import Navbar from '../components/Navbar';
 
-
 export default function Events() {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -57,9 +56,10 @@ export default function Events() {
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                marginBottom: '20px' 
+                marginBottom: '20px',
+                flexWrap: 'wrap'
             }}>
-                <h1>PNW Events Calendar</h1>
+                <h1 style={{ flex: '1 1 100%', textAlign: 'center' }}>PNW Events Calendar</h1>
                 <Link 
                     href="/" 
                     style={{
@@ -67,7 +67,8 @@ export default function Events() {
                         backgroundColor: '#007bff',
                         color: 'white',
                         borderRadius: '4px',
-                        textDecoration: 'none'
+                        textDecoration: 'none',
+                        marginTop: '10px'
                     }}
                 >
                     Back to Map
@@ -98,6 +99,20 @@ export default function Events() {
                 />
             </div>
         </div>
+        <style jsx>{`
+            @media (max-width: 600px) {
+                h1 {
+                    font-size: 1.5em;
+                }
+                .fc-toolbar {
+                    flex-direction: column;
+                }
+                .fc-toolbar .fc-left,
+                .fc-toolbar .fc-right {
+                    margin-bottom: 10px;
+                }
+            }
+        `}</style>
         </>
     );
 }

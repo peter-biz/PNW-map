@@ -11,6 +11,8 @@
   "dependencies": {
     "@fullcalendar/daygrid": "^6.1.15",
     "@fullcalendar/react": "^6.1.15",
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/supabase-js": "^2.49.3",
     "axios": "^1.8.4",
     "ical.js": "^2.1.0",
     "install": "^0.13.0",
