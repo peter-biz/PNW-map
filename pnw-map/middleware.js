@@ -1,4 +1,3 @@
-js
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 
@@ -8,7 +7,7 @@ export async function middleware(req) {
   const { data: { session } } = await supabase.auth.getSession()
 
   // Only protect premium feature routes
-  const protectedRoutes = ['/favorites', '/settings', '/profile']
+  const protectedRoutes = ['/favorites', '/settings']
   
   if (!session && protectedRoutes.some(route => req.nextUrl.pathname.startsWith(route))) {
     return NextResponse.redirect(new URL('/auth/login', req.url))
@@ -20,7 +19,6 @@ export async function middleware(req) {
 export const config = {
   matcher: [
     '/favorites/:path*',
-    '/settings/:path*',
-    '/profile/:path*'
+    '/settings/:path*'
   ]
 }

@@ -35,8 +35,8 @@ export default function Navbar({ currentBuilding }) {
             {user ? (
               <div className="flex items-center space-x-4">
                 {/* Premium features for logged in users */}
-                <Link href="/favorites" className="text-gray-600 hover:text-gray-900">
-                  My Favorites
+                <Link href="/profile" className="text-gray-600 hover:text-gray-900">
+                  My Profile
                 </Link>
                 <button
                   onClick={handleSignOut}
