@@ -15,6 +15,11 @@ const WeatherWidget = dynamic(
   { ssr: false }
 );
 
+const TrafficWidget = dynamic(
+  () => import('./components/TrafficWidget'),
+  { ssr: false }
+);
+
 export default function Home() {
   const [currentBuilding, setCurrentBuilding] = useState("Searching...");
 
@@ -34,6 +39,7 @@ export default function Home() {
       <Navbar currentBuilding={currentBuilding} />
       <div style={{ position: 'relative' }}>
         <WeatherWidget />
+        <TrafficWidget />
         <MapComponent buildingPoints={buildingPoints} />
       </div>
     </>

@@ -500,3 +500,4 @@ export default function Profile() {
     </>
   );
 }
+//TODO: FIXME: logs you out if you refresh on the my profile page.
