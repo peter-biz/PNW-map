@@ -70,56 +70,67 @@ function determineBuilding(latitude, longitude) {
     const SULBP1 = { lat: 41.584527, lng: -87.474722 }; // Top Left
     const SULBP2 = { lat: 41.584527, lng: -87.473389 }; // Top Right
     const SULBP3 = { lat: 41.584083, lng: -87.473306 }; // Bot Right
+    const SULBP4 = { lat: 41.584104133660446, lng: -87.4747061777043 }; // Bot Left
 
     // Gyte Building Coordinates
     const GYTEP1 = { lat: 41.58559579963701, lng: -87.47565221109035 }; // Top Left
     const GYTEP2 = { lat: 41.58550752684843, lng: -87.47417029072048 }; // Top Right
     const GYTEP3 = { lat: 41.585075189061406, lng: -87.47414615084114 }; // Bot Right
+    const GYTEP4 = { lat: 41.585051305405216, lng: -87.47564713980297}; // Bot Left
 
     // Potter Building Coordinates
     const POTTERP1 = { lat: 41.586511340457825, lng: -87.47504375643874 }; // Top Left
     const POTTERP2 = { lat: 41.586513346627704, lng: -87.47474066684273 }; // Top Right
     const POTTERP3 = { lat: 41.58616728139962, lng: -87.47474334905155 }; // Bot Right
+    const POTTERP4 = { lat: 41.58619020271098, lng: -87.47504664782296 }; // Bot Left
 
     // Powers Building Coordinates
     const POWERSP1 = { lat: 41.58648626332894, lng: -87.47561372581177 }; // Top Left
     const POWERSP2 = { lat: 41.58648726641429, lng: -87.47516311473098 }; // Top Right
     const POWERSP3 = { lat: 41.58604691045072, lng: -87.47516445583538 }; // Bot Right
+    const POWERSP4 = { lat: 41.586013655974796, lng: -87.4756144147832 }; // Bot Left
 
     // CLO Building Coordinates
     const CLOP1 = { lat: 41.58719204054566, lng: -87.47575650012156 }; // Top Left
     const CLOP2 = { lat: 41.58721109895614, lng: -87.47507119576952 }; // Top Right
     const CLOP3 = { lat: 41.58653000805287, lng: -87.4750483969933 }; // Bot Right
+    const CLOP4 = { lat: 41.58667871029105, lng: -87.47575362987966 }; // Bot Left
 
     // Anderson Building Coordinates
     const ANDERSONP1 = { lat: 41.58802407130252, lng: -87.47562641050784 }; // Top Left
     const ANDERSONP2 = { lat: 41.58802106211808, lng: -87.47498670370564 }; // Top Right
     const ANDERSONP3 = { lat: 41.5874262439056, lng: -87.47493440063377 }; // Bot Right
+    const ANDERSONP4 = { lat: 41.587399201376996, lng: -87.47564199030866 }; // Bot Left
 
     // NILS Building Coordinates
     const NILSP1 = { lat: 41.58361944832225, lng: -87.47458185241473 }; // Top Left
     const NILSP2 = { lat: 41.58361042015047, lng: -87.47343252589033 }; // Top Right
     const NILSP3 = { lat: 41.58337819513019, lng: -87.47355926026957 }; // Bot Right
+    const NILSP4 = { lat: 41.583391899372124, lng: -87.47459432611974 }; // Bot Left
 
     // Porter Building Coordinates
     const PORTERP1 = { lat: 41.58540983454981, lng: -87.47351260108323 }; // Top Left
     const PORTERP2 = { lat: 41.58540180973273, lng: -87.47274548936234 }; // Top Right
     const PORTERP3 = { lat: 41.5850868348742, lng: -87.47274280715354 }; // Bot Right
+    const PORTERP4 = { lat: 41.58510723512759, lng: -87.473517859824}; // Bot Left
 
     // Office of Admissions Building Coordinates
     const OFFICEP1 = { lat: 41.58324415257033, lng: -87.47560494597836 }; // Top Left
     const OFFICEP2 = { lat: 41.583293306201845, lng: -87.4751798158813 }; // Top Right
     const OFFICEP3 = { lat: 41.58267336581933, lng: -87.47517445146507 }; // Bot Right
+    const OFFICEP4 = { lat:41.58269221563888, lng: -87.47552076786096}; // Bot Left
 
     // Fitness Building Coordinates
     const FITNESSP1 = { lat: 41.58063765045891, lng: -87.4745391853471 }; // Top Left
     const FITNESSP2 = { lat: 41.580620596461095, lng: -87.47340863433189 }; // Top Right
     const FITNESSP3 = { lat: 41.579953480651504, lng: -87.47348105396162 }; // Bot Right
+    const FITNESSP4 = { lat: 41.579975029978364, lng: -87.47437347753696}; // Bot Left
 
     // Counseling Center Building Coordinates
     const COUNSELINGP1 = { lat: 41.579594338742616, lng: -87.47526740499988 }; // Top Left
     const COUNSELINGP2 = { lat: 41.57959132916529, lng: -87.47498174976117 }; // Top Right
     const COUNSELINGP3 = { lat: 41.579230178868485, lng: -87.47500454853608 }; // Bot Right
+    const COUNSELINGP4 = { lat: 41.57925200913232, lng: -87.47526121102216}; // Bot Left
 
     if (latitude >= SULBP3.lat && latitude <= SULBP1.lat && longitude >= SULBP1.lng && longitude <= SULBP2.lng) {
         return "SULB";
@@ -202,5 +213,17 @@ export const FITNESSP3 = { lat: 41.579953480651504, lng: -87.47348105396162 }; /
 export const COUNSELINGP1 = { lat: 41.579594338742616, lng: -87.47526740499988 }; // Top Left
 export const COUNSELINGP2 = { lat: 41.57959132916529, lng: -87.47498174976117 }; // Top Right
 export const COUNSELINGP3 = { lat: 41.579230178868485, lng: -87.47500454853608 }; // Bot Right
+//added building points for bottom left corners so panes can be drawn
+export const SULBP4 = { lat: 41.584104133660446, lng: -87.4747061777043 }; // Bot Left
+export const GYTEP4 = { lat: 41.585051305405216, lng: -87.47564713980297 }; // Bot Left
+export const POTTERP4 = { lat: 41.58619020271098, lng: -87.47504664782296 }; // Bot Left
+export const POWERSP4 = { lat: 41.586013655974796, lng: -87.4756144147832 }; // Bot Left
+export const CLOP4 = { lat: 41.58667871029105, lng: -87.47575362987966 }; // Bot Left
+export const ANDERSONP4 = { lat: 41.587399201376996, lng: -87.47564199030866 }; // Bot Left
+export const NILSP4 = { lat: 41.583391899372124, lng: -87.47459432611974 }; // Bot Left
+export const PORTERP4 = { lat: 41.58510723512759, lng: -87.473517859824 }; // Bot Left
+export const OFFICEP4 = { lat: 41.58269221563888, lng: -87.47552076786096 }; // Bot Left
+export const FITNESSP4 = { lat: 41.579975029978364, lng: -87.47437347753696 }; // Bot Left
+export const COUNSELINGP4 = { lat: 41.57925200913232, lng: -87.47526121102216 }; // Bot Left
 
 export { getLocation, building };

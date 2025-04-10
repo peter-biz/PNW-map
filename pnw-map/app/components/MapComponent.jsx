@@ -6,18 +6,7 @@ import { useAuth } from "../components/AuthProvider";
 import { supabase } from "../lib/supabase";
 
 function calculateBuildingCenter(corners) {
-  // Ensure we have exactly 3 corners
-  if (corners.length !== 3) {
-    throw new Error("Exactly three corner coordinates are required");
-  }
-
-  // calculate the centroid (geometric center) of the triangle
-  const centroid = calculateCentroid(corners);
-
-  return centroid;
-}
-
-function calculateCentroid(corners) {
+  // Calculate center using all 4 corners
   const totalLat = corners.reduce((sum, corner) => sum + corner[0], 0);
   const totalLng = corners.reduce((sum, corner) => sum + corner[1], 0);
 
@@ -145,84 +134,103 @@ function addMarker(
   return marker;
 }
 
-//TODO: add panes to buildings, BUGGY, since there are only 3 points, it create a triangle pane for rectangle buildings,
-//also the panes overide/remove the building markers (this is fine if the panes have a text/title on them)
+//TODO: fix some of the building points cuz the shapes are weird :)
 function createBuildingPolygon(map, corners, buildingInfo) {
-  const polygonCoords = corners.map((corner) => [corner.lat, corner.lng]);
-  // Close the polygon by adding the first point again
-  polygonCoords.push([corners[0].lat, corners[0].lng]);
+  // Ensure corners array exists and has 4 points
+  if (!corners || corners.length !== 4) {
+    console.warn('Invalid corners data for building:', buildingInfo.name);
+    return;
+  }
+  
+  try {
+    const polygonCoords = corners.map(corner => [corner.lat, corner.lng]);
+    // Close the polygon by adding first point again
+    polygonCoords.push(polygonCoords[0]);
+    
+    const polygon = L.polygon(polygonCoords, {
+      color: "#3388ff",
+      fillColor: "#3388ff",
+      fillOpacity: 0.2,
+      weight: 2,
+    }).addTo(map);
 
-  const polygon = L.polygon(polygonCoords, {
-    color: "#3388ff",
-    fillColor: "#3388ff",
-    fillOpacity: 0.2,
-    weight: 2,
-  }).addTo(map);
-
-  polygon.on("click", () => {
-    const content = document.createElement("div");
-    content.className = "building-popup";
-    content.innerHTML = `
-      <h3 class="text-lg font-bold mb-2">${buildingInfo.name}</h3>
-      <div class="floor-buttons">
-        ${buildingInfo.floors
-          .map(
-            (floor) => `
-          <button 
-            class="floor-btn w-full mb-2 p-2 text-left hover:bg-gray-100 rounded"
-            data-floor="${floor.level}"
-          >
-            ${floor.name}
-          </button>
-        `
-          )
-          .join("")}
-      </div>
-    `;
-
-    const popup = L.popup({
-      maxWidth: 300,
-      className: "building-popup",
-    })
-      .setLatLng(polygon.getBounds().getCenter())
-      .setContent(content);
-
-    map.openPopup(popup);
-
-    // Add click handlers for floor buttons
-    content.querySelectorAll(".floor-btn").forEach((button) => {
-      button.addEventListener("click", () => {
-        const floorLevel = button.getAttribute("data-floor");
-        const floor = buildingInfo.floors.find((f) => f.level === floorLevel);
-
-        // Create floor plan overlay
-        const bounds = polygon.getBounds();
-        const image = L.imageOverlay(floor.planUrl, bounds, {
-          opacity: 0.8,
-          zIndex: 1000,
-        }).addTo(map);
-
-        // Add close button
-        const closeBtn = L.control({ position: "topright" });
-        closeBtn.onAdd = function () {
-          const div = L.DomUtil.create("div", "close-floor-plan");
-          div.innerHTML = `
-            <button class="bg-white p-2 rounded shadow">
-              ❌ Close Floor Plan
+    polygon.on("click", () => {
+      const content = document.createElement("div");
+      content.className = "building-popup";
+      content.innerHTML = `
+        <h3 class="text-lg font-bold mb-2">${buildingInfo.name}</h3>
+        <div class="floor-buttons">
+          ${buildingInfo.floors
+            .map(
+              (floor) => `
+            <button 
+              class="floor-btn w-full mb-2 p-2 text-left hover:bg-gray-100 rounded"
+              data-floor="${floor.level}"
+            >
+              ${floor.name}
             </button>
-          `;
-          div.onclick = () => {
-            map.removeLayer(image);
-            map.removeControl(closeBtn);
-          };
-          return div;
-        };
-        closeBtn.addTo(map);
+          `
+            )
+            .join("")}
+        </div>
+      `;
+
+      const popup = L.popup({
+        maxWidth: 300,
+        className: "building-popup",
+      })
+        .setLatLng(polygon.getBounds().getCenter())
+        .setContent(content);
+
+      map.openPopup(popup);
+
+      // Add click handlers for floor buttons
+      content.querySelectorAll(".floor-btn").forEach((button) => {
+        button.addEventListener("click", () => {
+          const floorLevel = button.getAttribute("data-floor");
+          const floor = buildingInfo.floors.find((f) => f.level === floorLevel);
+
+          // Create floor plan overlay if a plan URL exists
+          if (floor.planUrl) {
+            const bounds = polygon.getBounds();
+            const image = L.imageOverlay(floor.planUrl, bounds, {
+              opacity: 0.8,
+              zIndex: 1000,
+            }).addTo(map);
+
+            // Add close button
+            const closeBtn = L.control({ position: "topright" });
+            closeBtn.onAdd = function () {
+              const div = L.DomUtil.create("div", "close-floor-plan");
+              div.innerHTML = `
+                <button class="bg-white p-2 rounded shadow">
+                  ❌ Close Floor Plan
+                </button>
+              `;
+              div.onclick = () => {
+                map.removeLayer(image);
+                map.removeControl(closeBtn);
+              };
+              return div;
+            };
+            closeBtn.addTo(map);
+          } else {
+            alert("Floor plan not available");
+          }
+        });
       });
     });
-  });
 
-  return polygon;
+    // Add center marker for the building TODO:
+    // const center = polygon.getBounds().getCenter();
+    // L.marker([center.lat, center.lng])
+    //   .bindPopup(buildingInfo.name)
+    //   .addTo(map);
+
+    return polygon;
+  } catch (error) {
+    console.error('Error creating polygon for building:', buildingInfo.name, error);
+  }
 }
 
 export default function MapComponent({ buildingPoints }) {
@@ -277,6 +285,7 @@ export default function MapComponent({ buildingPoints }) {
     // Only create map if it doesn't exist
     if (!mapRef.current) {
       const map = L.map("map", {
+        center: [41.58297, -87.47416],
         zoomControl: false,
         maxBounds: bounds,
         maxBoundsViscosity: 1.0,
@@ -289,7 +298,7 @@ export default function MapComponent({ buildingPoints }) {
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
-        minZoom: 17,
+        minZoom: 16,
         bounds: bounds,
         attribution: "© OpenStreetMap contributors",
       }).addTo(map);
@@ -297,22 +306,141 @@ export default function MapComponent({ buildingPoints }) {
       map.fitBounds(bounds);
       mapRef.current = map;
 
-      // Add building markers
-      const buildingMarkers = [
-        { name: "SULB", corners: buildingPoints.SULB },
-        { name: "GYTE", corners: buildingPoints.GYTE },
-        { name: "POTTER", corners: buildingPoints.POTTER },
-      ];
-
-      buildingMarkers.forEach((building) => {
-        const corners = [
-          [building.corners[0].lat, building.corners[0].lng],
-          [building.corners[1].lat, building.corners[1].lng],
-          [building.corners[2].lat, building.corners[2].lng],
+      // Add building markers if buildingPoints exist
+      if (buildingPoints) {
+        const buildingMarkers = [
+          {
+            name: "SULB",
+            corners: buildingPoints.SULB,
+            info: {
+              name: "Student Union Library Building",
+              floors: [
+                { level: "1", name: "First Floor" },
+                { level: "2", name: "Second Floor" },
+              ],
+            },
+          },
+          {
+            name: "GYTE",
+            corners: buildingPoints.GYTE,
+            info: {
+              name: "Gyte Building",
+              floors: [
+                { level: "1", name: "First Floor" },
+                { level: "2", name: "Second Floor" },
+              ],
+            },
+          },
+          {
+            name: "POTTER",
+            corners: buildingPoints.POTTER,
+            info: {
+              name: "Potter Building",
+              floors: [
+                { level: "1", name: "First Floor" },
+                { level: "2", name: "Second Floor" },
+              ],
+            },
+          },
+          {
+            name: "POWERS",
+            corners: buildingPoints.POWERS,
+            info: {
+              name: "Powers Building",
+              floors: [
+                { level: "1", name: "First Floor" },
+                { level: "2", name: "Second Floor" },
+              ],
+            },
+          },
+          {
+            name: "CLO",
+            corners: buildingPoints.CLO,
+            info: {
+              name: "CLO Building",
+              floors: [
+                { level: "1", name: "First Floor" },
+                { level: "2", name: "Second Floor" },
+              ],
+            },
+          },
+          {
+            name: "ANDERSON",
+            corners: buildingPoints.ANDERSON,
+            info: {
+              name: "Anderson Building",
+              floors: [
+                { level: "1", name: "First Floor" },
+                { level: "2", name: "Second Floor" },
+              ],
+            },
+          },
+          {
+            name: "NILS",
+            corners: buildingPoints.NILS,
+            info: {
+              name: "Nils Building",
+              floors: [
+                { level: "1", name: "First Floor" },
+                { level: "2", name: "Second Floor" },
+              ],
+            },
+          },
+          {
+            name: "PORTER",
+            corners: buildingPoints.PORTER,
+            info: {
+              name: "Porter Building",
+              floors: [
+                { level: "1", name: "First Floor" },
+                { level: "2", name: "Second Floor" },
+              ],
+            },
+          },
+          {
+            name: "OFFICE",
+            corners: buildingPoints.OFFICE,
+            info: {
+              name: "Office Building",
+              floors: [
+                { level: "1", name: "First Floor" },
+                { level: "2", name: "Second Floor" },
+              ],
+            },
+          },
+          {
+            name: "FITNESS",
+            corners: buildingPoints.FITNESS,
+            info: {
+              name: "Fitness Center",
+              floors: [
+                { level: "1", name: "First Floor" },
+                { level: "2", name: "Second Floor" },
+              ],
+            },
+          },
+          {
+            name: "COUNSELING",
+            corners: buildingPoints.COUNSELING,
+            info: {
+              name: "Counseling Center",
+              floors: [
+                { level: "1", name: "First Floor" },
+                { level: "2", name: "Second Floor" },
+              ],
+            },
+          },
         ];
-        const center = calculateBuildingCenter(corners);
-        L.marker(center).bindPopup(building.name).addTo(map);
-      });
+
+        buildingMarkers.forEach((building) => {
+          // Verify corners exist before creating polygon
+          if (building.corners && building.corners.length === 4) {
+            createBuildingPolygon(map, building.corners, building.info);
+          } else {
+            console.warn(`Invalid corners data for building: ${building.name}`);
+          }
+        });
+      }
 
       // Add double-click marker functionality
       map.on("dblclick", function (e) {
@@ -456,7 +584,7 @@ export default function MapComponent({ buildingPoints }) {
         mapRef.current = null;
       }
     };
-  }, []); // Keep empty dependency array
+  }, [buildingPoints]); // Add buildingPoints as dependency
 
   // Handle location updates separately
   useEffect(() => {
