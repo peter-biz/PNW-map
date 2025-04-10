@@ -45,6 +45,16 @@ var redIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
+var violetIcon = new L.Icon({
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
 
 async function addMarkerToDatabase(userId, coords, description, color) {
   const { data, error } = await supabase
@@ -138,15 +148,15 @@ function addMarker(
 function createBuildingPolygon(map, corners, buildingInfo) {
   // Ensure corners array exists and has 4 points
   if (!corners || corners.length !== 4) {
-    console.warn('Invalid corners data for building:', buildingInfo.name);
+    console.warn("Invalid corners data for building:", buildingInfo.name);
     return;
   }
-  
+
   try {
-    const polygonCoords = corners.map(corner => [corner.lat, corner.lng]);
+    const polygonCoords = corners.map((corner) => [corner.lat, corner.lng]);
     // Close the polygon by adding first point again
     polygonCoords.push(polygonCoords[0]);
-    
+
     const polygon = L.polygon(polygonCoords, {
       color: "#3388ff",
       fillColor: "#3388ff",
@@ -229,7 +239,11 @@ function createBuildingPolygon(map, corners, buildingInfo) {
 
     return polygon;
   } catch (error) {
-    console.error('Error creating polygon for building:', buildingInfo.name, error);
+    console.error(
+      "Error creating polygon for building:",
+      buildingInfo.name,
+      error
+    );
   }
 }
 
@@ -238,9 +252,10 @@ export default function MapComponent({ buildingPoints }) {
   const mapRef = useRef(null);
   const locationMarkerRef = useRef(null);
   const markersRef = useRef([]);
+  const classMarkersRef = useRef([]);
   const [userLocation, setUserLocation] = useState(null);
 
-  // Move loadUserMarkers to its own function outside useEffect
+  // Load user markers from database
   const loadUserMarkers = async () => {
     if (!mapRef.current || !user) return;
     try {
@@ -271,10 +286,95 @@ export default function MapComponent({ buildingPoints }) {
     }
   };
 
-  // Call loadUserMarkers whenever user or map changes
+  /// Load class markers from database
+  const loadClassMarkers = async () => {
+    if (!mapRef.current || !user) return;
+
+    try {
+      // Clear existing class markers first
+      classMarkersRef.current.forEach((marker) => {
+        mapRef.current.removeLayer(marker);
+      });
+      classMarkersRef.current = [];
+
+      // Fetch user's class schedule
+      const { data: classSchedule, error } = await supabase
+        .from("class_schedule")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      // Create an object to store classes by building
+      const classesByBuilding = {};
+
+      // Group classes by building
+      classSchedule?.forEach((classItem) => {
+        if (!classesByBuilding[classItem.building]) {
+          classesByBuilding[classItem.building] = [];
+        }
+        classesByBuilding[classItem.building].push(classItem);
+      });
+
+      // Create a marker for each building with classes
+      Object.keys(classesByBuilding).forEach((buildingName) => {
+        // Find the building in buildingPoints
+        const building = buildingPoints && buildingPoints[buildingName];
+
+        if (building && building.length === 4) {
+          // Calculate building center
+          const center = calculateBuildingCenter(
+            building.map((point) => [point.lat, point.lng])
+          );
+
+          // Create list of classes for the popup
+          const classes = classesByBuilding[buildingName];
+          const classListHTML = classes
+            .map(
+              (c) => `
+            <div class="class-item p-2 border-b">
+              <div class="font-medium">${c.class_name}</div>
+              <div class="text-sm">${buildingName} ${c.room}</div>
+              <div class="text-sm">${c.days} ${c.start_time}-${c.end_time}</div>
+            </div>
+          `
+            )
+            .join("");
+
+          // Create popup content
+          const popupContent = document.createElement("div");
+          popupContent.innerHTML = `
+          <div class="schedule-popup">
+            <h3 class="text-lg font-bold mb-2">Your Classes in ${buildingName}</h3>
+            <div class="class-list">
+              ${classListHTML}
+            </div>
+          </div>
+        `;
+
+          // Add marker with violet icon and save reference
+          const marker = L.marker(center, {
+            icon: violetIcon,
+          })
+            .bindPopup(popupContent)
+            .addTo(mapRef.current);
+
+          // Store marker reference for future cleanup
+          classMarkersRef.current.push(marker);
+        }
+      });
+    } catch (error) {
+      console.error("Error loading class markers:", error);
+    }
+  };
+
+  // Load user and class markers when user changes or map is initialized
   useEffect(() => {
-    loadUserMarkers();
-  }, [user, mapRef.current]);
+    if (mapRef.current && user) {
+      loadUserMarkers();
+      loadClassMarkers();
+    }
+  }, [user]);
 
   // Initialize map only once
   useEffect(() => {
@@ -305,6 +405,11 @@ export default function MapComponent({ buildingPoints }) {
 
       map.fitBounds(bounds);
       mapRef.current = map;
+
+      if (user) {
+        loadUserMarkers();
+        loadClassMarkers();
+      }
 
       // Add building markers if buildingPoints exist
       if (buildingPoints) {

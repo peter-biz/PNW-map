@@ -10,6 +10,16 @@ export default function Profile() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [userMarkers, setUserMarkers] = useState([]);
+  const [userSchedule, setUserSchedule] = useState([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newClass, setNewClass] = useState({
+    name: "",
+    building: "",
+    room: "",
+    days: "",
+    startTime: "",
+    endTime: ""
+  });
 
   useEffect(() => {
     if (!user) {
@@ -19,13 +29,22 @@ export default function Profile() {
 
     async function loadUserData() {
       try {
-        const { data: markers, error } = await supabase
+        // Fetch markers
+        const { data: markers, error: markersError } = await supabase
           .from("markers")
           .select("*")
           .eq("user_id", user.id);
-
-        if (error) throw error;
+        if (markersError) throw markersError;
         setUserMarkers(markers || []);
+        
+        // Fetch schedule
+        const { data: schedule, error: scheduleError } = await supabase
+          .from("class_schedule")
+          .select("*")
+          .eq("user_id", user.id);
+          
+        if (scheduleError) throw scheduleError;
+        setUserSchedule(schedule || []);
       } catch (error) {
         console.error("Error loading user data:", error);
       } finally {
@@ -35,6 +54,41 @@ export default function Profile() {
 
     loadUserData();
   }, [user, router]);
+
+  const handleAddClass = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const { data, error } = await supabase
+        .from("class_schedule")
+        .insert([{
+          user_id: user.id,
+          class_name: newClass.name,
+          building: newClass.building,
+          room: newClass.room,
+          days: newClass.days,
+          start_time: newClass.startTime,
+          end_time: newClass.endTime
+        }])
+        .select();
+        
+      if (error) throw error;
+      
+      setUserSchedule([...userSchedule, data[0]]);
+      setShowAddForm(false);
+      setNewClass({
+        name: "",
+        building: "",
+        room: "",
+        days: "",
+        startTime: "",
+        endTime: ""
+      });
+    } catch (error) {
+      console.error("Error adding class:", error);
+      alert("Failed to add class");
+    }
+  };
 
   if (loading) {
     return (
@@ -62,7 +116,7 @@ export default function Profile() {
             </p>
           </div>
 
-          <div className="bg-white shadow rounded-lg p-6">
+          <div className="bg-white shadow rounded-lg p-6 mb-6">
             <h2 className="text-lg font-semibold mb-4">
               My Markers ({userMarkers.length})
             </h2>
@@ -100,6 +154,155 @@ export default function Profile() {
               </div>
             ) : (
               <p className="text-gray-500">No markers created yet</p>
+            )}
+          </div>
+
+          {/* Class Schedule Section */}
+          <div className="bg-white shadow rounded-lg p-6 mt-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">
+                My Class Schedule ({userSchedule.length})
+              </h2>
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                {showAddForm ? "Cancel" : "Add Class"}
+              </button>
+            </div>
+
+            {showAddForm && (
+              <form onSubmit={handleAddClass} className="mb-6 p-4 border rounded bg-gray-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Class Name/Number</label>
+                    <input
+                      type="text"
+                      required
+                      value={newClass.name}
+                      onChange={(e) => setNewClass({...newClass, name: e.target.value})}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+                      placeholder="CS 101"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Building</label>
+                    <select
+                      required
+                      value={newClass.building}
+                      onChange={(e) => setNewClass({...newClass, building: e.target.value})}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+                    >
+                      <option value="">Select Building</option>
+                      <option value="SULB">SULB</option>
+                      <option value="GYTE">GYTE</option>
+                      <option value="CLO">CLO</option>
+                      <option value="ANDERSON">ANDERSON</option>
+                      <option value="POTTER">POTTER</option>
+                      <option value="POWERS">POWERS</option>
+                      <option value="NILS">NILS</option>
+                      <option value="PORTER">PORTER</option>
+                      <option value="OFFICE">OFFICE</option>
+                      <option value="FITNESS">FITNESS</option>
+                      <option value="COUNSELING">COUNSELING</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Room</label>
+                    <input
+                      type="text"
+                      required
+                      value={newClass.room}
+                      onChange={(e) => setNewClass({...newClass, room: e.target.value})}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+                      placeholder="140"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Days</label>
+                    <input
+                      type="text"
+                      required
+                      value={newClass.days}
+                      onChange={(e) => setNewClass({...newClass, days: e.target.value})}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+                      placeholder="MWF"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Start Time</label>
+                    <input
+                      type="time"
+                      required
+                      value={newClass.startTime}
+                      onChange={(e) => setNewClass({...newClass, startTime: e.target.value})}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">End Time</label>
+                    <input
+                      type="time"
+                      required
+                      value={newClass.endTime}
+                      onChange={(e) => setNewClass({...newClass, endTime: e.target.value})}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <button
+                    type="submit"
+                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    Add Class
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {userSchedule.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days & Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {userSchedule.map((classItem) => (
+                      <tr key={classItem.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">{classItem.class_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{classItem.building} {classItem.room}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{classItem.days} {classItem.start_time}-{classItem.end_time}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={async () => {
+                              if (confirm("Delete this class?")) {
+                                await supabase
+                                  .from("class_schedule")
+                                  .delete()
+                                  .eq("id", classItem.id);
+                                setUserSchedule(
+                                  userSchedule.filter((c) => c.id !== classItem.id)
+                                );
+                              }
+                            }}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-gray-500">No classes added to your schedule yet</p>
             )}
           </div>
         </div>
