@@ -1,0 +1,78 @@
+### if i decide to migrate buildings into the database:
+CREATE TABLE building_coordinates (
+  building_id VARCHAR REFERENCES buildings(id) ON DELETE CASCADE,
+  corner_number INTEGER CHECK (corner_number BETWEEN 1 AND 4),
+  latitude NUMERIC(10, 8) NOT NULL,
+  longitude NUMERIC(11, 8) NOT NULL,
+  PRIMARY KEY (building_id, corner_number)
+);
+
+-- Enable RLS
+ALTER TABLE building_coordinates ENABLE ROW LEVEL SECURITY;
+
+-- Public read access
+CREATE POLICY "Public can view building coordinates" 
+  ON building_coordinates FOR SELECT USING (true);
+
+------------------------------------------------------------------------------------
+
+// Function to migrate building data to Supabase
+async function migrateBuildings() {
+  const buildingMarkers = [
+    {
+      id: "SULB",
+      name: "Student Union Library Building",
+      floors: 2,
+      corners: buildingPoints.SULB,
+    },
+    {
+      id: "GYTE",
+      name: "Gyte Building",
+      floors: 2,
+      corners: buildingPoints.GYTE,
+    },
+    // ... other buildings
+  ];
+  
+  for (const building of buildingMarkers) {
+    // 1. Insert building
+    const { error: buildingError } = await supabase
+      .from('buildings')
+      .insert({
+        id: building.id,
+        name: building.name,
+        floors: building.floors,
+        description: ''
+      });
+      
+    if (buildingError) console.error("Error adding building:", buildingError);
+    
+    // 2. Insert floor plans
+    for (let i = 1; i <= building.floors; i++) {
+      const { error: floorError } = await supabase
+        .from('floor_plans')
+        .insert({
+          building_id: building.id,
+          floor_number: i,
+          floor_name: i === 1 ? "First Floor" : "Second Floor",
+          storage_path: `${building.id.toLowerCase()}/${i}.png`
+        });
+        
+      if (floorError) console.error("Error adding floor plan:", floorError);
+    }
+    
+    // 3. Insert coordinates
+    for (let i = 0; i < building.corners.length; i++) {
+      const { error: coordError } = await supabase
+        .from('building_coordinates')
+        .insert({
+          building_id: building.id,
+          corner_number: i + 1,
+          latitude: building.corners[i].lat,
+          longitude: building.corners[i].lng
+        });
+        
+      if (coordError) console.error("Error adding coordinates:", coordError);
+    }
+  }
+}
