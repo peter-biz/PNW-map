@@ -151,7 +151,7 @@ async function getFloorPlan(buildingName, floorLevel) {
 
     // Use consistent naming pattern for floor plans
     const floorPlanPath = `${buildingId}F${floorLevel}.png`; // Format like "SULBF1.png"
-    console.log("Attempting to load floor plan:", floorPlanPath);
+    //console.log("Attempting to load floor plan:", floorPlanPath);
 
     const { data, error } = await supabase.storage
       .from("floor-plans")
@@ -340,19 +340,224 @@ function createBuildingPolygon(map, corners, buildingInfo) {
             header.appendChild(title);
             header.appendChild(closeButton);
 
-            // Image container
+            // Image container with zoom and pan functionality
             const imageContainer = document.createElement("div");
+            imageContainer.className = "floor-plan-image-container";
             imageContainer.style.flex = "1";
-            imageContainer.style.overflow = "auto";
+            imageContainer.style.overflow = "hidden";
+            imageContainer.style.position = "relative";
             imageContainer.style.textAlign = "center";
+            imageContainer.style.touchAction = "none"; // Prevent browser's default touch actions
+
+            // Create a wrapper for zoom and pan
+            const imageWrapper = document.createElement("div");
+            imageWrapper.className = "floor-plan-image-wrapper";
+            imageWrapper.style.transformOrigin = "0 0";
+            imageWrapper.style.transition = "transform 0.1s ease-out";
+            imageWrapper.style.cursor = "grab";
 
             const image = document.createElement("img");
             image.alt = `${buildingInfo.name} ${floor.name} floor plan`;
             image.style.maxWidth = "100%";
             image.style.maxHeight = "70vh";
             image.style.objectFit = "contain";
+            image.draggable = false; // Prevent browser default drag
 
-            imageContainer.appendChild(image);
+            // Add the image to the wrapper, and the wrapper to the container
+            imageWrapper.appendChild(image);
+            imageContainer.appendChild(imageWrapper);
+
+            // Add zoom controls
+            const zoomControls = document.createElement("div");
+            zoomControls.style.position = "absolute";
+            zoomControls.style.bottom = "10px";
+            zoomControls.style.right = "10px";
+            zoomControls.style.display = "flex";
+            zoomControls.style.gap = "5px";
+
+            const zoomInBtn = document.createElement("button");
+            zoomInBtn.textContent = "+";
+            zoomInBtn.style.width = "40px";
+            zoomInBtn.style.height = "40px";
+            zoomInBtn.style.borderRadius = "50%";
+            zoomInBtn.style.backgroundColor = "white";
+            zoomInBtn.style.border = "1px solid #ccc";
+            zoomInBtn.style.fontSize = "20px";
+            zoomInBtn.style.cursor = "pointer";
+            zoomInBtn.style.boxShadow = "0 1px 3px rgba(0,0,0,0.3)";
+
+            const zoomOutBtn = document.createElement("button");
+            zoomOutBtn.textContent = "−";
+            zoomOutBtn.style.width = "40px";
+            zoomOutBtn.style.height = "40px";
+            zoomOutBtn.style.borderRadius = "50%";
+            zoomOutBtn.style.backgroundColor = "white";
+            zoomOutBtn.style.border = "1px solid #ccc";
+            zoomOutBtn.style.fontSize = "20px";
+            zoomOutBtn.style.cursor = "pointer";
+            zoomOutBtn.style.boxShadow = "0 1px 3px rgba(0,0,0,0.3)";
+
+            zoomControls.appendChild(zoomOutBtn);
+            zoomControls.appendChild(zoomInBtn);
+            imageContainer.appendChild(zoomControls);
+
+            // State variables for zoom and pan
+            let scale = 1;
+            let translateX = 0;
+            let translateY = 0;
+            let startX = 0;
+            let startY = 0;
+            let isDragging = false;
+
+            // Function to update the transform
+            const updateTransform = () => {
+              imageWrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            };
+
+            // Zoom in function
+            const zoomIn = () => {
+              if (scale < 3) {
+                scale *= 1.2;
+                updateTransform();
+              }
+            };
+
+            // Zoom out function
+            const zoomOut = () => {
+              if (scale > 0.5) {
+                scale /= 1.2;
+                // If zooming out below 1, reset position
+                if (scale < 1) {
+                  translateX = 0;
+                  translateY = 0;
+                }
+                updateTransform();
+              }
+            };
+
+            // Add click handlers for zoom buttons
+            zoomInBtn.addEventListener("click", zoomIn);
+            zoomOutBtn.addEventListener("click", zoomOut);
+
+            // Mouse and touch events for dragging
+            imageWrapper.addEventListener("mousedown", (e) => {
+              if (scale > 1) {
+                isDragging = true;
+                startX = e.clientX - translateX;
+                startY = e.clientY - translateY;
+                imageWrapper.style.cursor = "grabbing";
+                e.preventDefault();
+              }
+            });
+
+            // Touch start event
+            imageWrapper.addEventListener("touchstart", (e) => {
+              if (scale > 1 && e.touches.length === 1) {
+                isDragging = true;
+                startX = e.touches[0].clientX - translateX;
+                startY = e.touches[0].clientY - translateY;
+                e.preventDefault();
+              }
+            });
+
+            // Handle pinch to zoom (touch only)
+            let initialDistance = 0;
+            let initialScale = 1;
+
+            imageWrapper.addEventListener("touchstart", (e) => {
+              if (e.touches.length === 2) {
+                // Get the distance between two fingers
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                initialDistance = Math.sqrt(dx * dx + dy * dy);
+                initialScale = scale;
+                e.preventDefault();
+              }
+            });
+
+            imageWrapper.addEventListener("touchmove", (e) => {
+              if (e.touches.length === 2) {
+                // Calculate new distance
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Calculate new scale
+                scale = initialScale * (distance / initialDistance);
+                scale = Math.min(Math.max(scale, 0.5), 3); // Limit scale
+                
+                updateTransform();
+                e.preventDefault();
+              } else if (isDragging && e.touches.length === 1) {
+                translateX = e.touches[0].clientX - startX;
+                translateY = e.touches[0].clientY - startY;
+                updateTransform();
+                e.preventDefault();
+              }
+            });
+
+            // Mouse move and mouse up events
+            document.addEventListener("mousemove", (e) => {
+              if (isDragging) {
+                translateX = e.clientX - startX;
+                translateY = e.clientY - startY;
+                updateTransform();
+                e.preventDefault();
+              }
+            });
+
+            document.addEventListener("mouseup", () => {
+              isDragging = false;
+              imageWrapper.style.cursor = "grab";
+            });
+
+            // Touch end event
+            document.addEventListener("touchend", () => {
+              isDragging = false;
+              initialDistance = 0;
+            });
+
+            // Double tap to zoom in (mobile)
+            let lastTap = 0;
+            imageWrapper.addEventListener("touchend", (e) => {
+              const now = new Date().getTime();
+              const timeSince = now - lastTap;
+              if (timeSince < 300 && timeSince > 0) {
+                // Double tap detected
+                if (scale > 1) {
+                  // If already zoomed in, reset
+                  scale = 1;
+                  translateX = 0;
+                  translateY = 0;
+                } else {
+                  // Zoom in
+                  scale = 2;
+                }
+                updateTransform();
+                e.preventDefault();
+              }
+              lastTap = now;
+            });
+
+            // Load event for image
+            image.addEventListener("load", () => {
+              // Reset transformation when a new image loads
+              scale = 1;
+              translateX = 0;
+              translateY = 0;
+              updateTransform();
+            });
+
+            // Handle wheel event for desktop zoom
+            imageContainer.addEventListener("wheel", (e) => {
+              e.preventDefault();
+              const delta = Math.sign(e.deltaY);
+              if (delta > 0) {
+                zoomOut();
+              } else {
+                zoomIn();
+              }
+            });
 
             // Navigation buttons container
             const navContainer = document.createElement("div");
@@ -405,6 +610,11 @@ function createBuildingPolygon(map, corners, buildingInfo) {
             // Button event handlers
             closeButton.addEventListener("click", () => {
               document.body.removeChild(modal);
+              // Clean up event listeners when modal is closed
+              document.removeEventListener("mousemove", null);
+              document.removeEventListener("mouseup", null);
+              document.removeEventListener("touchmove", null);
+              document.removeEventListener("touchend", null);
             });
 
             prevButton.addEventListener("click", async () => {
@@ -437,6 +647,11 @@ function createBuildingPolygon(map, corners, buildingInfo) {
             modal.addEventListener("click", (e) => {
               if (e.target === modal) {
                 document.body.removeChild(modal);
+                // Clean up event listeners when modal is closed
+                document.removeEventListener("mousemove", null);
+                document.removeEventListener("mouseup", null);
+                document.removeEventListener("touchmove", null);
+                document.removeEventListener("touchend", null);
               }
             });
 
@@ -486,9 +701,7 @@ export default function MapComponent({ buildingPoints }) {
           if (error) {
             console.error("Test query failed:", error);
           } else {
-            console.log(
-              `Database connection successful. Found ${count} buildings.`
-            );
+            //console.log(`Database connection successful. Found ${count} buildings.`);
           }
         });
     }
@@ -496,11 +709,11 @@ export default function MapComponent({ buildingPoints }) {
 
   const fetchBuildingData = async () => {
     try {
-      console.log("Starting to fetch building data...");
+     // console.log("Starting to fetch building data...");
       setDbLoaded(false);
 
       // Fetch buildings data
-      console.log("Fetching buildings...");
+    // console.log("Fetching buildings...");
       const buildingsResult = await supabase.from("buildings").select("*");
 
       if (buildingsResult.error) {
@@ -509,22 +722,21 @@ export default function MapComponent({ buildingPoints }) {
       }
 
       const buildingsData = buildingsResult.data || [];
-      console.log(`Successfully fetched ${buildingsData.length} buildings`);
+     // console.log(`Successfully fetched ${buildingsData.length} buildings`);
 
-      // Since name is now the primary key, use it directly as the key in our object
       const buildingsObj = {};
       buildingsData.forEach((building) => {
         buildingsObj[building.name] = building;
       });
 
-      console.log("Buildings object:", buildingsObj);
+     // console.log("Buildings object:", buildingsObj);
 
       // Set buildings state
       setBuildings(buildingsObj);
       setDbLoaded(true);
     } catch (error) {
       // Enhanced error logging
-      console.error("Error fetching building data:", error);
+      //console.error("Error fetching building data:", error);
 
       // Fall back to hardcoded data if needed
       setBuildings({
@@ -554,7 +766,7 @@ export default function MapComponent({ buildingPoints }) {
         },
       });
     } finally {
-      console.log("Fetch operation completed");
+     // console.log("Fetch operation completed");
       setDbLoaded(true);
     }
   };
@@ -738,7 +950,7 @@ export default function MapComponent({ buildingPoints }) {
             );
 
             // Log for debugging
-            console.log(`Building ${buildingId} lookup:`, buildingFromDb);
+           // console.log(`Building ${buildingId} lookup:`, buildingFromDb);
 
             // Create floors array based on database or defaults
             let floors = [];
@@ -747,12 +959,10 @@ export default function MapComponent({ buildingPoints }) {
               // Special handling for buildings with no floor plans
               if (buildingId === "COUNSELING" || buildingFromDb.floors === 0) {
                 floors = [];
-                console.log(`Building ${buildingId} has no floor plans`);
+              //  console.log(`Building ${buildingId} has no floor plans`);
               } else {
                 // Use number of floors from database
-                console.log(
-                  `Building ${buildingId} has ${buildingFromDb.floors} floors`
-                );
+               // console.log(`Building ${buildingId} has ${buildingFromDb.floors} floors`);
                 for (let i = 1; i <= buildingFromDb.floors; i++) {
                   floors.push({
                     level: i.toString(),
