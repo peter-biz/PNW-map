@@ -169,14 +169,14 @@ async function getFloorPlan(buildingId, floorLevel, floorPlans) {
         console.error("Error downloading from storage:", error);
         throw error;
       }
-      
+
       return URL.createObjectURL(data);
     }
 
     // Fall back to the original implementation with adjusted path
     const fallbackPath = `${buildingId}F${floorLevel}.png`; // Format like "SULBF1.png"
     console.log("Falling back to:", fallbackPath);
-    
+
     const { data, error } = await supabase.storage
       .from("floor-plans")
       .download(fallbackPath);
@@ -185,7 +185,7 @@ async function getFloorPlan(buildingId, floorLevel, floorPlans) {
       console.error("Error downloading fallback:", error);
       throw error;
     }
-    
+
     return URL.createObjectURL(data);
   } catch (error) {
     console.error("Error loading floor plan:", error);
@@ -248,215 +248,231 @@ function createBuildingPolygon(map, corners, buildingInfo, floorPlans) {
         button.addEventListener("click", async () => {
           const floorLevel = button.getAttribute("data-floor");
           const floor = buildingInfo.floors.find((f) => f.level === floorLevel);
-          
+
           try {
             // Function to load and display a specific floor
             const loadFloorPlan = async (floorToLoad) => {
               let floorPlanUrl;
-              
+
               // First check if we have a planUrl from the database
               if (floorToLoad.planUrl) {
                 // If it's a full URL, use it directly
                 floorPlanUrl = floorToLoad.planUrl;
-                if (!floorPlanUrl.startsWith('http')) {
+                if (!floorPlanUrl.startsWith("http")) {
                   // If it's a storage path, get the actual URL
-                  const { data, error } = await supabase
-                    .storage
-                    .from('floor-plans')
+                  const { data, error } = await supabase.storage
+                    .from("floor-plans")
                     .download(floorPlanUrl);
-                    
+
                   if (error) throw error;
                   floorPlanUrl = URL.createObjectURL(data);
                 }
               } else {
                 // Try to get floor plan using the general function
-                floorPlanUrl = await getFloorPlan(buildingInfo.name, floorToLoad.level, floorPlans);
+                floorPlanUrl = await getFloorPlan(
+                  buildingInfo.name,
+                  floorToLoad.level,
+                  floorPlans
+                );
               }
-              
+
               if (!floorPlanUrl) {
                 throw new Error("Floor plan not available");
               }
-              
+
               // Update title
               title.textContent = `${buildingInfo.name} - ${floorToLoad.name}`;
-              
+
               // Update image
               image.src = floorPlanUrl;
-              
+
               // Update current floor reference
-              currentFloorIndex = buildingInfo.floors.findIndex(f => f.level === floorToLoad.level);
-              
+              currentFloorIndex = buildingInfo.floors.findIndex(
+                (f) => f.level === floorToLoad.level
+              );
+
               // Update navigation buttons
               updateNavigationButtons();
             };
-            
+
             // Function to update the state of navigation buttons
             const updateNavigationButtons = () => {
               prevButton.disabled = currentFloorIndex <= 0;
               prevButton.style.opacity = currentFloorIndex <= 0 ? "0.5" : "1";
-              
-              nextButton.disabled = currentFloorIndex >= buildingInfo.floors.length - 1;
-              nextButton.style.opacity = currentFloorIndex >= buildingInfo.floors.length - 1 ? "0.5" : "1";
+
+              nextButton.disabled =
+                currentFloorIndex >= buildingInfo.floors.length - 1;
+              nextButton.style.opacity =
+                currentFloorIndex >= buildingInfo.floors.length - 1
+                  ? "0.5"
+                  : "1";
             };
-            
+
             // Close the building popup first
             map.closePopup();
-            
+
             // Set initial floor index
-            let currentFloorIndex = buildingInfo.floors.findIndex(f => f.level === floorLevel);
-            
+            let currentFloorIndex = buildingInfo.floors.findIndex(
+              (f) => f.level === floorLevel
+            );
+
             // Create a modal overlay for the floor plan
-            const modal = document.createElement('div');
-            modal.className = 'floor-plan-modal';
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100%';
-            modal.style.height = '100%';
-            modal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-            modal.style.zIndex = '2000';
-            modal.style.display = 'flex';
-            modal.style.justifyContent = 'center';
-            modal.style.alignItems = 'center';
-            
+            const modal = document.createElement("div");
+            modal.className = "floor-plan-modal";
+            modal.style.position = "fixed";
+            modal.style.top = "0";
+            modal.style.left = "0";
+            modal.style.width = "100%";
+            modal.style.height = "100%";
+            modal.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+            modal.style.zIndex = "2000";
+            modal.style.display = "flex";
+            modal.style.justifyContent = "center";
+            modal.style.alignItems = "center";
+
             // Create the content container
-            const modalContent = document.createElement('div');
-            modalContent.className = 'floor-plan-modal-content';
-            modalContent.style.backgroundColor = 'white';
-            modalContent.style.padding = '20px';
-            modalContent.style.borderRadius = '8px';
-            modalContent.style.maxWidth = '90%';
-            modalContent.style.maxHeight = '90%';
-            modalContent.style.position = 'relative';
-            modalContent.style.overflow = 'hidden';
-            modalContent.style.display = 'flex';
-            modalContent.style.flexDirection = 'column';
-            
+            const modalContent = document.createElement("div");
+            modalContent.className = "floor-plan-modal-content";
+            modalContent.style.backgroundColor = "white";
+            modalContent.style.padding = "20px";
+            modalContent.style.borderRadius = "8px";
+            modalContent.style.maxWidth = "90%";
+            modalContent.style.maxHeight = "90%";
+            modalContent.style.position = "relative";
+            modalContent.style.overflow = "hidden";
+            modalContent.style.display = "flex";
+            modalContent.style.flexDirection = "column";
+
             // Header with title and close button
-            const header = document.createElement('div');
-            header.style.display = 'flex';
-            header.style.justifyContent = 'space-between';
-            header.style.alignItems = 'center';
-            header.style.marginBottom = '15px';
-            
-            const title = document.createElement('h3');
+            const header = document.createElement("div");
+            header.style.display = "flex";
+            header.style.justifyContent = "space-between";
+            header.style.alignItems = "center";
+            header.style.marginBottom = "15px";
+
+            const title = document.createElement("h3");
             title.textContent = `${buildingInfo.name} - ${floor.name}`;
-            title.style.margin = '0';
-            title.style.fontSize = '18px';
-            
-            const closeButton = document.createElement('button');
-            closeButton.textContent = '✖';
-            closeButton.style.background = 'none';
-            closeButton.style.border = 'none';
-            closeButton.style.fontSize = '20px';
-            closeButton.style.cursor = 'pointer';
-            closeButton.style.padding = '5px';
-            
+            title.style.margin = "0";
+            title.style.fontSize = "18px";
+
+            const closeButton = document.createElement("button");
+            closeButton.textContent = "✖";
+            closeButton.style.background = "none";
+            closeButton.style.border = "none";
+            closeButton.style.fontSize = "20px";
+            closeButton.style.cursor = "pointer";
+            closeButton.style.padding = "5px";
+
             header.appendChild(title);
             header.appendChild(closeButton);
-            
+
             // Image container
-            const imageContainer = document.createElement('div');
-            imageContainer.style.flex = '1';
-            imageContainer.style.overflow = 'auto';
-            imageContainer.style.textAlign = 'center';
-            
-            const image = document.createElement('img');
+            const imageContainer = document.createElement("div");
+            imageContainer.style.flex = "1";
+            imageContainer.style.overflow = "auto";
+            imageContainer.style.textAlign = "center";
+
+            const image = document.createElement("img");
             image.alt = `${buildingInfo.name} ${floor.name} floor plan`;
-            image.style.maxWidth = '100%';
-            image.style.maxHeight = '70vh';
-            image.style.objectFit = 'contain';
-            
+            image.style.maxWidth = "100%";
+            image.style.maxHeight = "70vh";
+            image.style.objectFit = "contain";
+
             imageContainer.appendChild(image);
-            
+
             // Navigation buttons container
-            const navContainer = document.createElement('div');
-            navContainer.style.display = 'flex';
-            navContainer.style.justifyContent = 'space-between';
-            navContainer.style.marginTop = '15px';
-            
+            const navContainer = document.createElement("div");
+            navContainer.style.display = "flex";
+            navContainer.style.justifyContent = "space-between";
+            navContainer.style.marginTop = "15px";
+
             // Previous floor button
-            const prevButton = document.createElement('button');
-            prevButton.textContent = '← Previous Floor';
-            prevButton.style.padding = '8px 16px';
-            prevButton.style.backgroundColor = '#3388ff';
-            prevButton.style.color = 'white';
-            prevButton.style.border = 'none';
-            prevButton.style.borderRadius = '4px';
-            prevButton.style.cursor = 'pointer';
-            
+            const prevButton = document.createElement("button");
+            prevButton.textContent = "← Previous Floor";
+            prevButton.style.padding = "8px 16px";
+            prevButton.style.backgroundColor = "#3388ff";
+            prevButton.style.color = "white";
+            prevButton.style.border = "none";
+            prevButton.style.borderRadius = "4px";
+            prevButton.style.cursor = "pointer";
+
             // Floor indicator
-            const floorIndicator = document.createElement('div');
-            floorIndicator.style.padding = '8px';
-            floorIndicator.style.display = 'flex';
-            floorIndicator.style.alignItems = 'center';
-            
+            const floorIndicator = document.createElement("div");
+            floorIndicator.style.padding = "8px";
+            floorIndicator.style.display = "flex";
+            floorIndicator.style.alignItems = "center";
+
             // Next floor button
-            const nextButton = document.createElement('button');
-            nextButton.textContent = 'Next Floor →';
-            nextButton.style.padding = '8px 16px';
-            nextButton.style.backgroundColor = '#3388ff';
-            nextButton.style.color = 'white';
-            nextButton.style.border = 'none';
-            nextButton.style.borderRadius = '4px';
-            nextButton.style.cursor = 'pointer';
-            
+            const nextButton = document.createElement("button");
+            nextButton.textContent = "Next Floor →";
+            nextButton.style.padding = "8px 16px";
+            nextButton.style.backgroundColor = "#3388ff";
+            nextButton.style.color = "white";
+            nextButton.style.border = "none";
+            nextButton.style.borderRadius = "4px";
+            nextButton.style.cursor = "pointer";
+
             navContainer.appendChild(prevButton);
             navContainer.appendChild(floorIndicator);
             navContainer.appendChild(nextButton);
-            
+
             // Assemble the modal
             modalContent.appendChild(header);
             modalContent.appendChild(imageContainer);
             modalContent.appendChild(navContainer);
             modal.appendChild(modalContent);
-            
+
             // Add to document
             document.body.appendChild(modal);
-            
+
             // Load initial floor plan
             await loadFloorPlan(floor);
-            
+
             // Button event handlers
-            closeButton.addEventListener('click', () => {
+            closeButton.addEventListener("click", () => {
               document.body.removeChild(modal);
             });
-            
-            prevButton.addEventListener('click', async () => {
+
+            prevButton.addEventListener("click", async () => {
               if (currentFloorIndex > 0) {
                 try {
-                  await loadFloorPlan(buildingInfo.floors[currentFloorIndex - 1]);
+                  await loadFloorPlan(
+                    buildingInfo.floors[currentFloorIndex - 1]
+                  );
                 } catch (error) {
                   console.error("Error loading previous floor:", error);
                   alert("Could not load previous floor plan");
                 }
               }
             });
-            
-            nextButton.addEventListener('click', async () => {
+
+            nextButton.addEventListener("click", async () => {
               if (currentFloorIndex < buildingInfo.floors.length - 1) {
                 try {
-                  await loadFloorPlan(buildingInfo.floors[currentFloorIndex + 1]);
+                  await loadFloorPlan(
+                    buildingInfo.floors[currentFloorIndex + 1]
+                  );
                 } catch (error) {
                   console.error("Error loading next floor:", error);
                   alert("Could not load next floor plan");
                 }
               }
             });
-            
+
             // Close when clicking outside the content
-            modal.addEventListener('click', (e) => {
+            modal.addEventListener("click", (e) => {
               if (e.target === modal) {
                 document.body.removeChild(modal);
               }
             });
-            
+
             // Update navigation button states initially
             updateNavigationButtons();
-            
           } catch (error) {
             console.error("Error displaying floor plan:", error);
-            alert("Error loading floor plan: " + (error.message || "Unknown error"));
+            alert(
+              "Error loading floor plan: " + (error.message || "Unknown error")
+            );
           }
         });
       });
@@ -471,7 +487,6 @@ function createBuildingPolygon(map, corners, buildingInfo, floorPlans) {
     );
   }
 }
-
 
 export default function MapComponent({ buildingPoints }) {
   const { user } = useAuth();
@@ -730,9 +745,7 @@ export default function MapComponent({ buildingPoints }) {
               name: buildingId,
               corners: corners,
               info: {
-                name: buildingFromDb
-                  ? buildingFromDb.name
-                  : `${buildingId}`,
+                name: buildingFromDb ? buildingFromDb.name : `${buildingId}`,
                 description: buildingFromDb ? buildingFromDb.desc : "",
                 type: buildingFromDb ? buildingFromDb.building_type : "",
                 floors: floors,
@@ -744,7 +757,12 @@ export default function MapComponent({ buildingPoints }) {
         // Create the building polygons
         buildingMarkers.forEach((building) => {
           if (building.corners && building.corners.length === 4) {
-            createBuildingPolygon(map, building.corners, building.info, floorPlans);
+            createBuildingPolygon(
+              map,
+              building.corners,
+              building.info,
+              floorPlans
+            );
           } else {
             console.warn(`Invalid corners data for building: ${building.name}`);
           }
@@ -917,7 +935,9 @@ export default function MapComponent({ buildingPoints }) {
             .addTo(mapRef.current);
         },
         (error) => {
-          console.error("Error getting location:", error.message);
+          // Not setting error code becasue it looks ugly in the header
+          console.log("Location unavailable");
+
         },
         {
           enableHighAccuracy: true,
@@ -938,6 +958,7 @@ export default function MapComponent({ buildingPoints }) {
   return <div id="map" style={{ height: "100vh", width: "100%" }} />;
 }
 
-
 //TODO: fix floor plan to properly display amount of floors in a buildilng
 //TODO: riley(counseling) center will have no floor plans so it shouldnt display anything
+//TODO: try to make more mobile friendly
+//TODO: add forgot password page :)

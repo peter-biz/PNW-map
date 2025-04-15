@@ -161,21 +161,8 @@ function determineBuilding(latitude, longitude) {
 }
 
 function handleGeolocationError(error) {
-    let errorMessage;
-    switch(error.code) {
-        case GeolocationPositionError.PERMISSION_DENIED:
-            errorMessage = "Please enable location services";
-            break;
-        case GeolocationPositionError.POSITION_UNAVAILABLE:
-            errorMessage = "Unable to determine location";
-            break;
-        case GeolocationPositionError.TIMEOUT:
-            errorMessage = "Location request timed out";
-            break;
-        default:
-            errorMessage = "Location error occurred";
-    }
-    console.error(`Geolocation error: ${errorMessage}`, error);
+    let errorMessage = "Unavailable";
+    console.error("Location Unavailable:", error.message);
     return errorMessage;
 }
 

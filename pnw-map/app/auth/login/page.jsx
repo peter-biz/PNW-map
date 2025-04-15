@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -10,6 +10,18 @@ export default function Login() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const [successMessage, setSuccessMessage] = useState(null);
+
+  // Look for the URL parameter that indicates successful password reset
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reset-success") === "true") {
+      // Show success message
+      setSuccessMessage(
+        "Password has been successfully reset. You can now log in with your new password."
+      );
+    }
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -48,6 +60,14 @@ export default function Login() {
         <h2 className="text-2xl font-bold text-center">
           Sign in to your account
         </h2>
+        {successMessage && (
+          <div
+            className="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative"
+            role="alert"
+          >
+            <span className="block sm:inline">{successMessage}</span>
+          </div>
+        )}
         {error && <p className="text-red-500 text-center">{error}</p>}
         <form onSubmit={handleLogin} className="space-y-6">
           <input
@@ -69,21 +89,21 @@ export default function Login() {
           <button
             type="submit"
             className={`w-full p-3 text-white rounded transition-colors ${
-              loading 
-                ? 'bg-blue-400 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700'
+              loading
+                ? "bg-blue-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
             }`}
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
 
         <div className="text-center mt-4">
           <p className="text-sm text-gray-600">
-            Don't have an account?{' '}
-            <Link 
-              href="/auth/signup" 
+            Don't have an account?{" "}
+            <Link
+              href="/auth/signup"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
               Sign up
@@ -92,16 +112,16 @@ export default function Login() {
         </div>
 
         <div>
-          <Link 
-            href="/auth/forgot-password" 
+          <Link
+            href="/auth/forgot-password"
             className="font-medium text-blue-600 hover:text-blue-500"
           >
-            Forgot your password?  (WIP, not yet added)
+            Forgot your password?
           </Link>
         </div>
         <div>
-          <Link 
-            href="/" 
+          <Link
+            href="/"
             className="font-medium text-blue-600 hover:text-blue-500"
           >
             Back to map
