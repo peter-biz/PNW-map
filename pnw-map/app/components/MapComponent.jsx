@@ -1210,5 +1210,3 @@ export default function MapComponent({ buildingPoints }) {
 
   return <div id="map" style={{ height: "100vh", width: "100%" }} />;
 }
-
-//TODO: make it so that you can zoom in on the floor plan and move it around(it's very small on mobile)
