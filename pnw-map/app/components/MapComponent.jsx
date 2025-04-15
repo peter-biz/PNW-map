@@ -144,45 +144,21 @@ function addMarker(
   return marker;
 }
 
-async function getFloorPlan(buildingId, floorLevel, floorPlans) {
+async function getFloorPlan(buildingName, floorLevel) {
   try {
-    // Check if we have floor plans from the database
-    const buildingFloorPlans = floorPlans[buildingId] || [];
-    const floorPlan = buildingFloorPlans.find(
-      (plan) => plan.floor_number === parseInt(floorLevel)
-    );
+    // Extract building ID from the full name, or use the name as-is
+    const buildingId = buildingName.split(" ")[0]; // Get just the first part (e.g., "SULB")
 
-    if (floorPlan && floorPlan.link) {
-      // If it's a full URL, return it directly - including the public URL
-      if (floorPlan.link.startsWith("http")) {
-        console.log("Using direct URL from database:", floorPlan.link);
-        return floorPlan.link;
-      }
-
-      // Otherwise, download from storage
-      console.log("Downloading from storage:", floorPlan.link);
-      const { data, error } = await supabase.storage
-        .from("floor-plans")
-        .download(floorPlan.link);
-
-      if (error) {
-        console.error("Error downloading from storage:", error);
-        throw error;
-      }
-
-      return URL.createObjectURL(data);
-    }
-
-    // Fall back to the original implementation with adjusted path
-    const fallbackPath = `${buildingId}F${floorLevel}.png`; // Format like "SULBF1.png"
-    console.log("Falling back to:", fallbackPath);
+    // Use consistent naming pattern for floor plans
+    const floorPlanPath = `${buildingId}F${floorLevel}.png`; // Format like "SULBF1.png"
+    console.log("Attempting to load floor plan:", floorPlanPath);
 
     const { data, error } = await supabase.storage
       .from("floor-plans")
-      .download(fallbackPath);
+      .download(floorPlanPath);
 
     if (error) {
-      console.error("Error downloading fallback:", error);
+      console.error("Error downloading floor plan:", error);
       throw error;
     }
 
@@ -193,8 +169,7 @@ async function getFloorPlan(buildingId, floorLevel, floorPlans) {
   }
 }
 
-//TODO: fix some of the building points cuz the shapes are weird :)
-function createBuildingPolygon(map, corners, buildingInfo, floorPlans) {
+function createBuildingPolygon(map, corners, buildingInfo) {
   // Ensure corners array exists and has 4 points
   if (!corners || corners.length !== 4) {
     console.warn("Invalid corners data for building:", buildingInfo.name);
@@ -216,23 +191,32 @@ function createBuildingPolygon(map, corners, buildingInfo, floorPlans) {
     polygon.on("click", () => {
       const content = document.createElement("div");
       content.className = "building-popup";
-      content.innerHTML = `
-        <h3 class="text-lg font-bold mb-2">${buildingInfo.name}</h3>
-        <div class="floor-buttons">
-          ${buildingInfo.floors
-            .map(
-              (floor) => `
-            <button 
-              class="floor-btn w-full mb-2 p-2 text-left hover:bg-gray-100 rounded"
-              data-floor="${floor.level}"
-            >
-              ${floor.name}
-            </button>
-          `
-            )
-            .join("")}
-        </div>
-      `;
+
+      // Check if building has floor plans
+      if (!buildingInfo.hasFloorPlans || buildingInfo.floors.length === 0) {
+        content.innerHTML = `
+          <h3 class="text-lg font-bold mb-2">${buildingInfo.name}</h3>
+          <p>No floor plans available for this building.</p>
+        `;
+      } else {
+        content.innerHTML = `
+          <h3 class="text-lg font-bold mb-2">${buildingInfo.name}</h3>
+          <div class="floor-buttons">
+            ${buildingInfo.floors
+              .map(
+                (floor) => `
+              <button 
+                class="floor-btn w-full mb-2 p-2 text-left hover:bg-gray-100 rounded"
+                data-floor="${floor.level}"
+              >
+                ${floor.name}
+              </button>
+            `
+              )
+              .join("")}
+          </div>
+        `;
+      }
 
       const popup = L.popup({
         maxWidth: 300,
@@ -243,7 +227,8 @@ function createBuildingPolygon(map, corners, buildingInfo, floorPlans) {
 
       map.openPopup(popup);
 
-      // Add click handlers for floor buttons
+      // Only add click handlers if there are floor buttons
+      // if (buildingInfo.hasFloorPlans && buildingInfo.floors.length > 0) { //TODO: //FIXME:
       content.querySelectorAll(".floor-btn").forEach((button) => {
         button.addEventListener("click", async () => {
           const floorLevel = button.getAttribute("data-floor");
@@ -254,45 +239,34 @@ function createBuildingPolygon(map, corners, buildingInfo, floorPlans) {
             const loadFloorPlan = async (floorToLoad) => {
               let floorPlanUrl;
 
-              // First check if we have a planUrl from the database
-              if (floorToLoad.planUrl) {
-                // If it's a full URL, use it directly
-                floorPlanUrl = floorToLoad.planUrl;
-                if (!floorPlanUrl.startsWith("http")) {
-                  // If it's a storage path, get the actual URL
-                  const { data, error } = await supabase.storage
-                    .from("floor-plans")
-                    .download(floorPlanUrl);
-
-                  if (error) throw error;
-                  floorPlanUrl = URL.createObjectURL(data);
-                }
-              } else {
-                // Try to get floor plan using the general function
+              try {
+                // Get floor plan using the general function
                 floorPlanUrl = await getFloorPlan(
                   buildingInfo.name,
-                  floorToLoad.level,
-                  floorPlans
+                  floorToLoad.level
                 );
+
+                if (!floorPlanUrl) {
+                  console.error("Floor plan URL is null or undefined");
+                }
+
+                // Update title
+                title.textContent = `${buildingInfo.name} - ${floorToLoad.name}`;
+
+                // Update image
+                image.src = floorPlanUrl;
+
+                // Update current floor reference
+                currentFloorIndex = buildingInfo.floors.findIndex(
+                  (f) => f.level === floorToLoad.level
+                );
+
+                // Update navigation buttons
+                updateNavigationButtons();
+              } catch (error) {
+                console.error("Error loading floor plan:", error);
+                throw error;
               }
-
-              if (!floorPlanUrl) {
-                throw new Error("Floor plan not available");
-              }
-
-              // Update title
-              title.textContent = `${buildingInfo.name} - ${floorToLoad.name}`;
-
-              // Update image
-              image.src = floorPlanUrl;
-
-              // Update current floor reference
-              currentFloorIndex = buildingInfo.floors.findIndex(
-                (f) => f.level === floorToLoad.level
-              );
-
-              // Update navigation buttons
-              updateNavigationButtons();
             };
 
             // Function to update the state of navigation buttons
@@ -496,46 +470,91 @@ export default function MapComponent({ buildingPoints }) {
   const classMarkersRef = useRef([]);
   const [userLocation, setUserLocation] = useState(null);
   const [buildings, setBuildings] = useState({});
-  const [floorPlans, setFloorPlans] = useState({});
   const [dbLoaded, setDbLoaded] = useState(false);
+
+  useEffect(() => {
+    // Check if supabase client is properly initialized
+    if (!supabase) {
+      console.error("Supabase client is not initialized!");
+    } else {
+      console.log("Supabase client is ready");
+      // Test with a simple query
+      supabase
+        .from("buildings")
+        .select("count", { count: "exact" })
+        .then(({ count, error }) => {
+          if (error) {
+            console.error("Test query failed:", error);
+          } else {
+            console.log(
+              `Database connection successful. Found ${count} buildings.`
+            );
+          }
+        });
+    }
+  }, []);
 
   const fetchBuildingData = async () => {
     try {
-      // Fetch buildings
-      const { data: buildingsData, error: buildingsError } = await supabase
-        .from("buildings")
-        .select("*");
+      console.log("Starting to fetch building data...");
+      setDbLoaded(false);
 
-      if (buildingsError) throw buildingsError;
+      // Fetch buildings data
+      console.log("Fetching buildings...");
+      const buildingsResult = await supabase.from("buildings").select("*");
 
-      // Fetch floor plans
-      const { data: floorPlansData, error: floorPlansError } = await supabase
-        .from("floor_plans")
-        .select("*");
+      if (buildingsResult.error) {
+        console.error("Error fetching buildings:", buildingsResult.error);
+        throw buildingsResult.error;
+      }
 
-      if (floorPlansError) throw floorPlansError;
+      const buildingsData = buildingsResult.data || [];
+      console.log(`Successfully fetched ${buildingsData.length} buildings`);
 
-      // Convert buildings array to object with ID as key
+      // Since name is now the primary key, use it directly as the key in our object
       const buildingsObj = {};
       buildingsData.forEach((building) => {
-        buildingsObj[building.id] = building;
+        buildingsObj[building.name] = building;
       });
 
-      // Organize floor plans by building ID
-      const floorPlansByBuilding = {};
-      floorPlansData.forEach((plan) => {
-        if (!floorPlansByBuilding[plan.building_id]) {
-          floorPlansByBuilding[plan.building_id] = [];
-        }
-        floorPlansByBuilding[plan.building_id].push(plan);
-      });
+      console.log("Buildings object:", buildingsObj);
 
+      // Set buildings state
       setBuildings(buildingsObj);
-      setFloorPlans(floorPlansByBuilding);
       setDbLoaded(true);
     } catch (error) {
+      // Enhanced error logging
       console.error("Error fetching building data:", error);
-      // If there's an error, still mark as loaded so we can proceed with default data
+
+      // Fall back to hardcoded data if needed
+      setBuildings({
+        SULB: {
+          name: "SULB",
+          display_name: "Student Union & Library Building",
+          floors: 3,
+        },
+        CLO: {
+          name: "CLO",
+          display_name: "Classroom Office Building",
+          floors: 3,
+        },
+        PWRS: { name: "PWRS", display_name: "Powers Building", floors: 2 },
+        ANDERSON: {
+          name: "ANDERSON",
+          display_name: "Anderson Building",
+          floors: 2,
+        },
+        GYTE: { name: "GYTE", display_name: "Gyte Building", floors: 2 },
+        PORTER: { name: "PORTER", display_name: "Porter Hall", floors: 2 },
+        FITNESS: { name: "FITNESS", display_name: "Fitness Center", floors: 2 },
+        COUNSELING: {
+          name: "COUNSELING",
+          display_name: "Riley Counseling Center",
+          floors: 0,
+        },
+      });
+    } finally {
+      console.log("Fetch operation completed");
       setDbLoaded(true);
     }
   };
@@ -668,8 +687,12 @@ export default function MapComponent({ buildingPoints }) {
 
   // Initialize map only once
   useEffect(() => {
+    if (!dbLoaded || mapRef.current) {
+      return;
+    }
+
     const southWest = L.latLng(41.57752532677525, -87.47749638635923);
-    const northEast = L.latLng(41.58841412396277, -87.47080018646325);
+    const northEast = L.latLng(41.58888074112958, -87.47139346964643);
     const bounds = L.latLngBounds(southWest, northEast);
 
     // Only create map if it doesn't exist
@@ -708,47 +731,73 @@ export default function MapComponent({ buildingPoints }) {
           (buildingId) => {
             const corners = buildingPoints[buildingId];
 
-            // Get building info from database if available
-            const buildingFromDb = buildings[buildingId];
-            const floorsFromDb = floorPlans[buildingId] || [];
+            // Look up building directly by name (case-insensitive)
+            const buildingFromDb = Object.values(buildings).find(
+              (building) =>
+                building.name.toUpperCase() === buildingId.toUpperCase()
+            );
+
+            // Log for debugging
+            console.log(`Building ${buildingId} lookup:`, buildingFromDb);
 
             // Create floors array based on database or defaults
             let floors = [];
 
             if (buildingFromDb) {
-              // Use number of floors from database
-              for (let i = 1; i <= buildingFromDb.floors; i++) {
-                const floorPlan = floorsFromDb.find(
-                  (plan) => plan.floor_number === i
+              // Special handling for buildings with no floor plans
+              if (buildingId === "COUNSELING" || buildingFromDb.floors === 0) {
+                floors = [];
+                console.log(`Building ${buildingId} has no floor plans`);
+              } else {
+                // Use number of floors from database
+                console.log(
+                  `Building ${buildingId} has ${buildingFromDb.floors} floors`
                 );
-                floors.push({
-                  level: i.toString(),
-                  name:
-                    i === 1
-                      ? "First Floor"
-                      : i === 2
-                      ? "Second Floor"
-                      : `Floor ${i}`,
-                  planUrl: floorPlan ? floorPlan.link : null,
-                });
+                for (let i = 1; i <= buildingFromDb.floors; i++) {
+                  floors.push({
+                    level: i.toString(),
+                    name:
+                      i === 1
+                        ? "First Floor"
+                        : i === 2
+                        ? "Second Floor"
+                        : i === 3
+                        ? "Third Floor"
+                        : `Floor ${i}`,
+                  });
+                }
               }
             } else {
-              // Fallback to default floors
-              floors = [
-                { level: "1", name: "First Floor" },
-                { level: "2", name: "Second Floor" },
-                { level: "3", name: "Third Floor" },
-              ];
+              // If building not in database
+              console.log(
+                `Building ${buildingId} not found in database, using default floors`
+              );
+              if (buildingId === "COUNSELING") {
+                floors = [];
+              } else {
+                // Default to 3 floors as fallback
+                floors = [
+                  { level: "1", name: "First Floor" },
+                  { level: "2", name: "Second Floor" },
+                  { level: "3", name: "Third Floor" },
+                ];
+              }
             }
 
             return {
               name: buildingId,
               corners: corners,
               info: {
-                name: buildingFromDb ? buildingFromDb.name : `${buildingId}`,
+                name: buildingFromDb
+                  ? buildingFromDb.display_name || buildingFromDb.name
+                  : buildingId,
                 description: buildingFromDb ? buildingFromDb.desc : "",
                 type: buildingFromDb ? buildingFromDb.building_type : "",
                 floors: floors,
+                hasFloorPlans: !(
+                  buildingId === "COUNSELING" ||
+                  (buildingFromDb && buildingFromDb.floors === 0)
+                ),
               },
             };
           }
@@ -757,12 +806,7 @@ export default function MapComponent({ buildingPoints }) {
         // Create the building polygons
         buildingMarkers.forEach((building) => {
           if (building.corners && building.corners.length === 4) {
-            createBuildingPolygon(
-              map,
-              building.corners,
-              building.info,
-              floorPlans
-            );
+            createBuildingPolygon(map, building.corners, building.info);
           } else {
             console.warn(`Invalid corners data for building: ${building.name}`);
           }
@@ -911,7 +955,7 @@ export default function MapComponent({ buildingPoints }) {
         mapRef.current = null;
       }
     };
-  }, [buildingPoints]); // Add buildingPoints as dependency
+  }, [buildings, user, buildingPoints, dbLoaded]); // Add buildingPoints as dependency
 
   // Handle location updates separately
   useEffect(() => {
@@ -937,7 +981,6 @@ export default function MapComponent({ buildingPoints }) {
         (error) => {
           // Not setting error code becasue it looks ugly in the header
           console.log("Location unavailable");
-
         },
         {
           enableHighAccuracy: true,
@@ -958,7 +1001,4 @@ export default function MapComponent({ buildingPoints }) {
   return <div id="map" style={{ height: "100vh", width: "100%" }} />;
 }
 
-//TODO: fix floor plan to properly display amount of floors in a buildilng
-//TODO: riley(counseling) center will have no floor plans so it shouldnt display anything
-//TODO: try to make more mobile friendly
-//TODO: add forgot password page :)
+//TODO: make it so that you can zoom in on the floor plan and move it around(it's very small on mobile)
