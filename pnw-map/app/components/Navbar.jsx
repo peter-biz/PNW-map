@@ -1,16 +1,15 @@
-'use client'
-import Link from 'next/link'
-import { useAuth } from './AuthProvider'
-import { supabase } from '../lib/supabase';
-
+"use client";
+import Link from "next/link";
+import { useAuth } from "./AuthProvider";
+import { supabase } from "../lib/supabase";
 
 export default function Navbar({ currentBuilding }) {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    window.location.reload()
-  }
+    await supabase.auth.signOut();
+    window.location.reload();
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
@@ -26,16 +25,19 @@ export default function Navbar({ currentBuilding }) {
               </span>
             )}
           </div>
-          
+
           <div className="flex items-center space-x-4">
             <Link href="/events" className="text-gray-600 hover:text-gray-900">
               Events
             </Link>
-            
+
             {user ? (
               <div className="flex items-center space-x-4">
                 {/* Premium features for logged in users */}
-                <Link href="/profile" className="text-gray-600 hover:text-gray-900">
+                <Link
+                  href="/profile"
+                  className="text-gray-600 hover:text-gray-900"
+                >
                   My Profile
                 </Link>
                 <button
@@ -47,13 +49,13 @@ export default function Navbar({ currentBuilding }) {
               </div>
             ) : (
               <div className="flex items-center space-x-4">
-                <Link 
+                <Link
                   href="/auth/login"
                   className="text-blue-600 hover:text-blue-700"
                 >
                   Sign in
                 </Link>
-                <Link 
+                <Link
                   href="/auth/signup"
                   className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
                 >
@@ -65,5 +67,5 @@ export default function Navbar({ currentBuilding }) {
         </div>
       </div>
     </nav>
-  )
+  );
 }

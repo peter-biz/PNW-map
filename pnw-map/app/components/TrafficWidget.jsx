@@ -56,43 +56,43 @@ const TrafficWidget = () => {
     const interval = setInterval(fetchTrafficData, 300000); // Update every 5 minutes
     return () => clearInterval(interval);
   }, []);
-  
+
   useEffect(() => {
     // Function to position traffic widget
     const positionTrafficWidget = () => {
-      const weatherWidget = document.querySelector('.weather-widget');
-      const trafficWidget = document.querySelector('.traffic-widget');
-      
+      const weatherWidget = document.querySelector(".weather-widget");
+      const trafficWidget = document.querySelector(".traffic-widget");
+
       if (weatherWidget && trafficWidget) {
         const weatherRect = weatherWidget.getBoundingClientRect();
         const newTop = weatherRect.bottom + 5; // 5px gap
         trafficWidget.style.top = `${newTop}px`;
       }
     };
-    
+
     // Run positioning immediately
     positionTrafficWidget();
-    
+
     // Create resize observer to watch for weather widget size changes
     let resizeObserver;
-    const weatherWidget = document.querySelector('.weather-widget');
-    
+    const weatherWidget = document.querySelector(".weather-widget");
+
     if (weatherWidget) {
       resizeObserver = new ResizeObserver(() => {
         positionTrafficWidget();
       });
-      
+
       resizeObserver.observe(weatherWidget);
     }
-    
+
     // Set a short interval as a fallback for initial loading
     const positionInterval = setInterval(positionTrafficWidget, 200);
-    
+
     // Clear interval after 2 seconds - by then everything should be loaded
     const timeoutId = setTimeout(() => {
       clearInterval(positionInterval);
     }, 2000);
-    
+
     return () => {
       if (resizeObserver) {
         resizeObserver.disconnect();
@@ -105,9 +105,6 @@ const TrafficWidget = () => {
   if (loading) return <div className="traffic-widget">Loading...</div>;
   if (error) return <div className="traffic-widget">{error}</div>;
   if (!trafficStatus) return null;
-
-
-
 
   return (
     <div className={`traffic-widget ${collapsed ? "collapsed" : ""}`}>

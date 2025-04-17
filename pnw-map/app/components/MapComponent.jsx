@@ -481,11 +481,11 @@ function createBuildingPolygon(map, corners, buildingInfo) {
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                
+
                 // Calculate new scale
                 scale = initialScale * (distance / initialDistance);
                 scale = Math.min(Math.max(scale, 0.5), 3); // Limit scale
-                
+
                 updateTransform();
                 e.preventDefault();
               } else if (isDragging && e.touches.length === 1) {
@@ -709,11 +709,11 @@ export default function MapComponent({ buildingPoints }) {
 
   const fetchBuildingData = async () => {
     try {
-     // console.log("Starting to fetch building data...");
+      // console.log("Starting to fetch building data...");
       setDbLoaded(false);
 
       // Fetch buildings data
-    // console.log("Fetching buildings...");
+      // console.log("Fetching buildings...");
       const buildingsResult = await supabase.from("buildings").select("*");
 
       if (buildingsResult.error) {
@@ -722,14 +722,14 @@ export default function MapComponent({ buildingPoints }) {
       }
 
       const buildingsData = buildingsResult.data || [];
-     // console.log(`Successfully fetched ${buildingsData.length} buildings`);
+      // console.log(`Successfully fetched ${buildingsData.length} buildings`);
 
       const buildingsObj = {};
       buildingsData.forEach((building) => {
         buildingsObj[building.name] = building;
       });
 
-     // console.log("Buildings object:", buildingsObj);
+      // console.log("Buildings object:", buildingsObj);
 
       // Set buildings state
       setBuildings(buildingsObj);
@@ -766,7 +766,7 @@ export default function MapComponent({ buildingPoints }) {
         },
       });
     } finally {
-     // console.log("Fetch operation completed");
+      // console.log("Fetch operation completed");
       setDbLoaded(true);
     }
   };
@@ -950,7 +950,7 @@ export default function MapComponent({ buildingPoints }) {
             );
 
             // Log for debugging
-           // console.log(`Building ${buildingId} lookup:`, buildingFromDb);
+            // console.log(`Building ${buildingId} lookup:`, buildingFromDb);
 
             // Create floors array based on database or defaults
             let floors = [];
@@ -959,10 +959,10 @@ export default function MapComponent({ buildingPoints }) {
               // Special handling for buildings with no floor plans
               if (buildingId === "COUNSELING" || buildingFromDb.floors === 0) {
                 floors = [];
-              //  console.log(`Building ${buildingId} has no floor plans`);
+                //  console.log(`Building ${buildingId} has no floor plans`);
               } else {
                 // Use number of floors from database
-               // console.log(`Building ${buildingId} has ${buildingFromDb.floors} floors`);
+                // console.log(`Building ${buildingId} has ${buildingFromDb.floors} floors`);
                 for (let i = 1; i <= buildingFromDb.floors; i++) {
                   floors.push({
                     level: i.toString(),

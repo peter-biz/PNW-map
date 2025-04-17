@@ -31,30 +31,28 @@ export default function SignUp() {
     }
 
     try {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-  
-        if (error) throw error;
-  
-        if (data?.user) {
-          router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
-        }
-      } catch (error) {
-        setError(error.message || "Failed to sign up");
-      } finally {
-        setLoading(false);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data?.user) {
+        router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
       }
+    } catch (error) {
+      setError(error.message || "Failed to sign up");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-md space-y-8 p-6 bg-white rounded-xl shadow-lg">
-        <h2 className="text-2xl font-bold text-center">
-          Create your account
-        </h2>
-        
+        <h2 className="text-2xl font-bold text-center">Create your account</h2>
+
         {error && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4">
             <p className="text-red-700">{error}</p>
@@ -86,25 +84,25 @@ export default function SignUp() {
             required
             className="w-full p-3 border rounded"
           />
-          
+
           <button
             type="submit"
             className={`w-full p-3 text-white rounded transition-colors ${
-              loading 
-                ? 'bg-blue-400 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700'
+              loading
+                ? "bg-blue-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
             }`}
             disabled={loading}
           >
-            {loading ? 'Creating account...' : 'Sign up'}
+            {loading ? "Creating account..." : "Sign up"}
           </button>
         </form>
 
         <div className="text-center mt-4">
           <p className="text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link 
-              href="/auth/login" 
+            Already have an account?{" "}
+            <Link
+              href="/auth/login"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
               Sign in
@@ -112,12 +110,12 @@ export default function SignUp() {
           </p>
         </div>
         <div>
-            <Link 
-                href="/" 
-                className="font-small text-blue-600 hover:text-blue-500"
-            >
-                Back to map
-            </Link>
+          <Link
+            href="/"
+            className="font-small text-blue-600 hover:text-blue-500"
+          >
+            Back to map
+          </Link>
         </div>
       </div>
     </div>
