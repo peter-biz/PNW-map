@@ -6,9 +6,9 @@ import { supabase } from "../lib/supabase";
 import Navbar from "../components/Navbar";
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [userDataLoading, setUserDataLoading] = useState(false);
   const [userMarkers, setUserMarkers] = useState([]);
   const [userSchedule, setUserSchedule] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -18,7 +18,7 @@ export default function Profile() {
     room: "",
     days: "",
     startTime: "",
-    endTime: ""
+    endTime: "",
   });
   const [editingClass, setEditingClass] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -27,62 +27,109 @@ export default function Profile() {
     room: "",
     days: "",
     startTime: "",
-    endTime: ""
+    endTime: "",
   });
 
+  console.log("Profile render:", { authLoading, user: user?.id, userDataLoading });
+
+  // Handle authentication state
   useEffect(() => {
-    if (!user) {
+    // Only redirect if auth loading is complete AND there's no user
+    if (!authLoading && !user) {
+      console.log("No authenticated user, redirecting to login");
       router.push("/auth/login");
-      return;
     }
+  }, [authLoading, user, router]);
 
-    async function loadUserData() {
-      try {
-        // Fetch markers
-        const { data: markers, error: markersError } = await supabase
-          .from("markers")
-          .select("*")
-          .eq("user_id", user.id);
-        if (markersError) throw markersError;
-        setUserMarkers(markers || []);
-        
-        // Fetch schedule
-        const { data: schedule, error: scheduleError } = await supabase
-          .from("class_schedule")
-          .select("*")
-          .eq("user_id", user.id);
-          
-        if (scheduleError) throw scheduleError;
-        setUserSchedule(schedule || []);
-      } catch (error) {
-        console.error("Error loading user data:", error);
-      } finally {
-        setLoading(false);
+  // Load user data - FIXED VERSION
+  useEffect(() => {
+    // Only fetch data if we have a user and auth is done loading
+    if (user && !authLoading) {
+      console.log("Loading user data for:", user.id);
+      setUserDataLoading(true);
+
+      async function loadUserData() {
+        try {
+          // Fetch markers
+          console.log("Fetching user markers");
+          const { data: markers, error: markersError } = await supabase
+            .from("markers")
+            .select("*")
+            .eq("user_id", user.id);
+
+          if (markersError) throw markersError;
+          setUserMarkers(markers || []);
+          console.log(`Found ${markers?.length || 0} markers`);
+
+          // Fetch schedule
+          console.log("Fetching user schedule");
+          const { data: schedule, error: scheduleError } = await supabase
+            .from("class_schedule")
+            .select("*")
+            .eq("user_id", user.id);
+
+          if (scheduleError) throw scheduleError;
+          setUserSchedule(schedule || []);
+          console.log(`Found ${schedule?.length || 0} classes`);
+        } catch (error) {
+          console.error("Error loading user data:", error);
+        } finally {
+          setUserDataLoading(false);
+        }
       }
-    }
 
-    loadUserData();
-  }, [user, router]);
+      loadUserData();
+    }
+  }, [user, authLoading]);
+
+  if (authLoading || userDataLoading) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen pt-16 flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            <p className="text-lg mb-2">Loading...</p>
+            <p className="text-sm text-gray-500">
+              {authLoading ? "Checking your login" : "Loading your data"}
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (!user) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen pt-16 flex items-center justify-center">
+          <p>You must be logged in to view this page. Redirecting...</p>
+        </div>
+      </>
+    );
+  }
 
   const handleAddClass = async (e) => {
     e.preventDefault();
-    
+
     try {
       const { data, error } = await supabase
         .from("class_schedule")
-        .insert([{
-          user_id: user.id,
-          class_name: newClass.name,
-          building: newClass.building,
-          room: newClass.room,
-          days: newClass.days,
-          start_time: newClass.startTime,
-          end_time: newClass.endTime
-        }])
+        .insert([
+          {
+            user_id: user.id,
+            class_name: newClass.name,
+            building: newClass.building,
+            room: newClass.room,
+            days: newClass.days,
+            start_time: newClass.startTime,
+            end_time: newClass.endTime,
+          },
+        ])
         .select();
-        
+
       if (error) throw error;
-      
+
       setUserSchedule([...userSchedule, data[0]]);
       setShowAddForm(false);
       setNewClass({
@@ -91,20 +138,20 @@ export default function Profile() {
         room: "",
         days: "",
         startTime: "",
-        endTime: ""
+        endTime: "",
       });
-      
+
       // Refresh map markers
-      window.dispatchEvent(new CustomEvent('classScheduleChanged'));
+      window.dispatchEvent(new CustomEvent("classScheduleChanged"));
     } catch (error) {
       console.error("Error adding class:", error);
       alert("Failed to add class");
     }
   };
-  
+
   const handleEditClass = async (e) => {
     e.preventDefault();
-    
+
     try {
       const { error } = await supabase
         .from("class_schedule")
@@ -114,48 +161,39 @@ export default function Profile() {
           room: editForm.room,
           days: editForm.days,
           start_time: editForm.startTime,
-          end_time: editForm.endTime
+          end_time: editForm.endTime,
         })
         .eq("id", editingClass);
-        
+
       if (error) throw error;
-      
+
       // Update the local state with the edited class
-      setUserSchedule(userSchedule.map(cls => 
-        cls.id === editingClass 
-          ? {
-              ...cls,
-              class_name: editForm.name,
-              building: editForm.building,
-              room: editForm.room,
-              days: editForm.days,
-              start_time: editForm.startTime,
-              end_time: editForm.endTime
-            } 
-          : cls
-      ));
-      
+      setUserSchedule(
+        userSchedule.map((cls) =>
+          cls.id === editingClass
+            ? {
+                ...cls,
+                class_name: editForm.name,
+                building: editForm.building,
+                room: editForm.room,
+                days: editForm.days,
+                start_time: editForm.startTime,
+                end_time: editForm.endTime,
+              }
+            : cls
+        )
+      );
+
       // Reset editing state
       setEditingClass(null);
-      
+
       // Send event to refresh map markers
-      window.dispatchEvent(new CustomEvent('classScheduleChanged'));
+      window.dispatchEvent(new CustomEvent("classScheduleChanged"));
     } catch (error) {
       console.error("Error updating class:", error);
       alert("Failed to update class");
     }
   };
-
-  if (loading) {
-    return (
-      <>
-        <Navbar />
-        <div className="min-h-screen pt-16 flex items-center justify-center">
-          <p>Loading...</p>
-        </div>
-      </>
-    );
-  }
 
   return (
     <>
@@ -228,25 +266,36 @@ export default function Profile() {
             </div>
 
             {showAddForm && (
-              <form onSubmit={handleAddClass} className="mb-6 p-4 border rounded bg-gray-50">
+              <form
+                onSubmit={handleAddClass}
+                className="mb-6 p-4 border rounded bg-gray-50"
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Class Name/Number</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Class Name/Number
+                    </label>
                     <input
                       type="text"
                       required
                       value={newClass.name}
-                      onChange={(e) => setNewClass({...newClass, name: e.target.value})}
+                      onChange={(e) =>
+                        setNewClass({ ...newClass, name: e.target.value })
+                      }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
                       placeholder="CS 101"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Building</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Building
+                    </label>
                     <select
                       required
                       value={newClass.building}
-                      onChange={(e) => setNewClass({...newClass, building: e.target.value})}
+                      onChange={(e) =>
+                        setNewClass({ ...newClass, building: e.target.value })
+                      }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
                     >
                       <option value="">Select Building</option>
@@ -264,44 +313,60 @@ export default function Profile() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Room</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Room
+                    </label>
                     <input
                       type="text"
                       required
                       value={newClass.room}
-                      onChange={(e) => setNewClass({...newClass, room: e.target.value})}
+                      onChange={(e) =>
+                        setNewClass({ ...newClass, room: e.target.value })
+                      }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
                       placeholder="140"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Days</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Days
+                    </label>
                     <input
                       type="text"
                       required
                       value={newClass.days}
-                      onChange={(e) => setNewClass({...newClass, days: e.target.value})}
+                      onChange={(e) =>
+                        setNewClass({ ...newClass, days: e.target.value })
+                      }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
                       placeholder="MWF"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Start Time</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Start Time
+                    </label>
                     <input
                       type="time"
                       required
                       value={newClass.startTime}
-                      onChange={(e) => setNewClass({...newClass, startTime: e.target.value})}
+                      onChange={(e) =>
+                        setNewClass({ ...newClass, startTime: e.target.value })
+                      }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">End Time</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      End Time
+                    </label>
                     <input
                       type="time"
                       required
                       value={newClass.endTime}
-                      onChange={(e) => setNewClass({...newClass, endTime: e.target.value})}
+                      onChange={(e) =>
+                        setNewClass({ ...newClass, endTime: e.target.value })
+                      }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
                     />
                   </div>
@@ -322,18 +387,33 @@ export default function Profile() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days & Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Class
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Location
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Days & Time
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {userSchedule.map((classItem) => (
                       <tr key={classItem.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">{classItem.class_name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{classItem.building} {classItem.room}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{classItem.days} {classItem.start_time}-{classItem.end_time}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {classItem.class_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {classItem.building} {classItem.room}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {classItem.days} {classItem.start_time}-
+                          {classItem.end_time}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex space-x-2">
                             <button
@@ -345,7 +425,7 @@ export default function Profile() {
                                   room: classItem.room,
                                   days: classItem.days,
                                   startTime: classItem.start_time,
-                                  endTime: classItem.end_time
+                                  endTime: classItem.end_time,
                                 });
                                 setEditingClass(classItem.id);
                               }}
@@ -357,23 +437,33 @@ export default function Profile() {
                               onClick={async () => {
                                 if (confirm("Delete this class?")) {
                                   try {
-                                    console.log("Deleting class with ID:", classItem.id);
-                                    
+                                    console.log(
+                                      "Deleting class with ID:",
+                                      classItem.id
+                                    );
+
                                     const { error } = await supabase
                                       .from("class_schedule")
                                       .delete()
                                       .eq("id", classItem.id);
-                                      
+
                                     if (error) throw error;
-                                    
+
                                     setUserSchedule(
-                                      userSchedule.filter((c) => c.id !== classItem.id)
+                                      userSchedule.filter(
+                                        (c) => c.id !== classItem.id
+                                      )
                                     );
-                                    
+
                                     // Refresh map markers
-                                    window.dispatchEvent(new CustomEvent('classScheduleChanged'));
+                                    window.dispatchEvent(
+                                      new CustomEvent("classScheduleChanged")
+                                    );
                                   } catch (error) {
-                                    console.error("Error deleting class:", error);
+                                    console.error(
+                                      "Error deleting class:",
+                                      error
+                                    );
                                     alert("Failed to delete class");
                                   }
                                 }
@@ -390,7 +480,9 @@ export default function Profile() {
                 </table>
               </div>
             ) : (
-              <p className="text-gray-500">No classes added to your schedule yet</p>
+              <p className="text-gray-500">
+                No classes added to your schedule yet
+              </p>
             )}
           </div>
         </div>
@@ -404,21 +496,29 @@ export default function Profile() {
             <form onSubmit={handleEditClass}>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Class Name/Number</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Class Name/Number
+                  </label>
                   <input
                     type="text"
                     required
                     value={editForm.name}
-                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, name: e.target.value })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Building</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Building
+                  </label>
                   <select
                     required
                     value={editForm.building}
-                    onChange={(e) => setEditForm({...editForm, building: e.target.value})}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, building: e.target.value })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
                   >
                     <option value="">Select Building</option>
@@ -436,50 +536,66 @@ export default function Profile() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Room</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Room
+                  </label>
                   <input
                     type="text"
                     required
                     value={editForm.room}
-                    onChange={(e) => setEditForm({...editForm, room: e.target.value})}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, room: e.target.value })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Days</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Days
+                  </label>
                   <input
                     type="text"
                     required
                     value={editForm.days}
-                    onChange={(e) => setEditForm({...editForm, days: e.target.value})}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, days: e.target.value })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Start Time</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Start Time
+                    </label>
                     <input
                       type="time"
                       required
                       value={editForm.startTime}
-                      onChange={(e) => setEditForm({...editForm, startTime: e.target.value})}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, startTime: e.target.value })
+                      }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">End Time</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      End Time
+                    </label>
                     <input
                       type="time"
                       required
                       value={editForm.endTime}
-                      onChange={(e) => setEditForm({...editForm, endTime: e.target.value})}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, endTime: e.target.value })
+                      }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
                     />
                   </div>
                 </div>
               </div>
               <div className="mt-5 flex justify-end space-x-3">
-                <button 
+                <button
                   type="button"
                   onClick={() => setEditingClass(null)}
                   className="px-4 py-2 border border-gray-300 rounded-md text-sm shadow-sm"
@@ -500,4 +616,3 @@ export default function Profile() {
     </>
   );
 }
-//TODO: FIXME: logs you out if you refresh on the my profile page.
