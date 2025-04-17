@@ -72,3 +72,23 @@ Anderson: 41.58755263068507, -87.475474865609
     var latitude = 41.58755263068507;
     var longitude = -87.475474865609;
 */
+
+
+# External Libraries:
+## Core Libraries
+* Next.js (15.1.7): React framework for web apps
+* React (19.0.0): UI component library
+## Map, Location, and Calendar Libraries
+* Leaflet (1.9.4): Interactive maps with markers and popups
+* @fullcalendar: Calendar display and event handling
+* ical.js: Parse calendar data
+## Backend & Auth
+* Supabase (2.49.3):
+    * Database operations
+    * User authentication
+    * Real-time features
+## Styling & Utils
+* TailwindCSS (3.4.1): Utility-first CSS framework
+* Axios (1.8.4): HTTP client for API requests
+## Development
+* ESLint: Code linting and formatting
