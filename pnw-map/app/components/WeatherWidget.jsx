@@ -64,7 +64,7 @@ const WeatherWidget = () => {
 
       <style jsx>{`
         .weather-widget {
-          position: fixed; /* Change from absolute to fixed */
+          position: fixed;
           top: 65px;
           right: 0;
           background-color: rgba(255, 255, 255, 0.9);
@@ -75,8 +75,8 @@ const WeatherWidget = () => {
           display: flex;
           transform: translateX(0);
           transition: transform 0.3s ease;
-          max-width: 300px; /* Add max-width */
-          width: auto; /* Let it size to content */
+          max-width: 300px;
+          width: auto;
         }
 
         .weather-widget.collapsed {
