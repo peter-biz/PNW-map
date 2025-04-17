@@ -691,7 +691,6 @@ export default function MapComponent({ buildingPoints }) {
     if (!supabase) {
       console.error("Supabase client is not initialized!");
     } else {
-      console.log("Supabase client is ready");
       // Test with a simple query
       supabase
         .from("buildings")

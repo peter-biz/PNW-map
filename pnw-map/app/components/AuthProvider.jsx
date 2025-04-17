@@ -18,10 +18,6 @@ export default function AuthProvider({ children }) {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        console.log(
-          "Initial auth check:",
-          session ? "User logged in" : "No user"
-        );
         setUser(session?.user ?? null);
       } catch (error) {
         console.error("Auth initialization error:", error);
