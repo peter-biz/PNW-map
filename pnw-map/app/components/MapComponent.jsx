@@ -227,8 +227,7 @@ function createBuildingPolygon(map, corners, buildingInfo) {
 
       map.openPopup(popup);
 
-      // Only add click handlers if there are floor buttons
-      // if (buildingInfo.hasFloorPlans && buildingInfo.floors.length > 0) { //TODO: //FIXME:
+      // Add event listeners to floor buttons
       content.querySelectorAll(".floor-btn").forEach((button) => {
         button.addEventListener("click", async () => {
           const floorLevel = button.getAttribute("data-floor");
