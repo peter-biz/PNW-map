@@ -36,11 +36,11 @@ export default function AuthProvider({ children }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log(
-        "Auth state changed:",
-        _event,
-        session ? "User present" : "No user"
-      );
+      // console.log(
+      //   "Auth state changed:",
+      //   _event,
+      //   session ? "User present" : "No user"
+      // );
       setUser(session?.user ?? null);
       setLoading(false);
     });
