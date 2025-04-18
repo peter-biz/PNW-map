@@ -30,13 +30,11 @@ export default function Profile() {
     endTime: "",
   });
 
-  console.log("Profile render:", { authLoading, user: user?.id, userDataLoading });
 
   // Handle authentication state
   useEffect(() => {
     // Only redirect if auth loading is complete AND there's no user
     if (!authLoading && !user) {
-      console.log("No authenticated user, redirecting to login");
       router.push("/auth/login");
     }
   }, [authLoading, user, router]);
@@ -45,24 +43,20 @@ export default function Profile() {
   useEffect(() => {
     // Only fetch data if we have a user and auth is done loading
     if (user && !authLoading) {
-      console.log("Loading user data for:", user.id);
       setUserDataLoading(true);
 
       async function loadUserData() {
         try {
           // Fetch markers
-          console.log("Fetching user markers");
           const { data: markers, error: markersError } = await supabase
             .from("markers")
             .select("*")
             .eq("user_id", user.id);
-
           if (markersError) throw markersError;
           setUserMarkers(markers || []);
-          console.log(`Found ${markers?.length || 0} markers`);
+
 
           // Fetch schedule
-          console.log("Fetching user schedule");
           const { data: schedule, error: scheduleError } = await supabase
             .from("class_schedule")
             .select("*")
@@ -70,7 +64,6 @@ export default function Profile() {
 
           if (scheduleError) throw scheduleError;
           setUserSchedule(schedule || []);
-          console.log(`Found ${schedule?.length || 0} classes`);
         } catch (error) {
           console.error("Error loading user data:", error);
         } finally {
@@ -437,10 +430,6 @@ export default function Profile() {
                               onClick={async () => {
                                 if (confirm("Delete this class?")) {
                                   try {
-                                    console.log(
-                                      "Deleting class with ID:",
-                                      classItem.id
-                                    );
 
                                     const { error } = await supabase
                                       .from("class_schedule")
